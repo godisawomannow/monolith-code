@@ -1,8 +1,126 @@
-```html
 <!DOCTYPE html>
 <html>
 <head>
     <title>Agent Render</title>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+    </style>
+</head>
+<body>
     <script>
-    // p5.js v1.7.0 minified
-    !function(e,t){"object"==typeof exports&&"undefined"!=typeof module?module.exports=t():"function"==typeof define&&define.amd?define(t):(e=e||self).p5=t()}(this,function(){"use strict";function e(e){return(e=e||{}).alpha=e.alpha||!1,e.depth=e.depth||!0,e.stencil=e.stencil||!0,e.antialias=e.antialias||!1,e.premultipliedAlpha=e.premultipliedAlpha||!0,e.preserveDrawingBuffer=e.preserveDrawingBuffer||!1,e.perPixelLighting=e.perPixelLighting||!1,e}function t(e){this.elt=e,this.pInst=void 0,this.computedStyle=getComputedStyle(e),this.width=e.offsetWidth,this.height=e.offsetHeight}t.prototype.size=function(){var e=this.computedStyle.getPropertyValue("width").replace("px",""),t=this.computedStyle.getPropertyValue("height").replace("px","");return parseInt(e,10)|0||parseInt(t,10)|0?[parseInt(e,10)||0,parseInt(t,10)||0]:[this.elt.offsetWidth,this.elt.offsetHeight]},t.prototype.remove=function(){for(var e in this)delete this[e],delete this};var n=function(e,t,n){return t=void 0!==t?t:0,n=void 0!==n?n:e.length-t,e.slice(t,t+n)};function i(e,t){return void 0!==e?Number(e):t}function r(e){return e}function o(e){if("string"==typeof e){if("number"==typeof(e=e.toLowerCase().trim())){if(n=parseInt(e,10),isNaN(n))throw new Error(t+" is not a number");return n}if(e in s)return s[e];if("#"===e[0])return a(e);if(e.indexOf("rgb")>-1)return l(e);if(e.indexOf("hsl")>-1)return c(e);throw new Error(t+" is not a valid color")}if("number"==typeof e){if(e!==Math.floor(e))throw new Error(t+" is not an integer");if(e<0||e>255)throw new Error(t+" is not within the range [0, 255]");return e}if(e instanceof Array){if(4===e.length){for(var n=0;n<4;n++){var i=e[n];if("number"!=typeof i||i!==Math.floor(i)||i<0||i>255)throw new Error(t+"["+n+"] is not an integer within the range [0, 255]")}return e}}else if(e instanceof r){if(e.mode===h.HSB)return[e.h,e.s,e.v,e.a];if(e.mode===h.HSL)return[e.h,e.s,e.l,e.a];if(e.mode===h.RGB)return[e.r,e.g,e.b,e.a]}throw new Error(t+" is not a valid color.")}function a(e){var t=/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i;if(e=e.match(t))return[16*parseInt(e[1],16),16*parseInt(e[2],16),16*parseInt(e[3],16),255];var n=/^#([0-9a-f])([0-9a-f])([0-9a-f])([0-9a-f])$/i;if(e=e.match(n))return[16*parseInt(e[1],16),16*parseInt(e[2],16),16*parseInt(e[3],16),16*parseInt(e[4],16)];var i=/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;if(e=e.match(i))return[parseInt(e[1],16),parseInt(e[2],16),parseInt(e[3],16),255];var r=/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;if(e=e.match(r))return[parseInt(e[1],16),parseInt(e[2],16),parseInt(e[3],16),parseInt(e[4],16)];throw new Error("Invalid hex color.")}function l(e){var t=/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)$/;if(e=e.match(t)){var n=parseInt(e[1],10),i=parseInt(e[2],10),r=parseInt(e[3],10),o=void 0!==e[4]?parseFloat(e[4]):1;if(o=Math.max(0,Math.min(1,o)),n>=0&&n<=255&&i>=0&&i<=255&&r>=0&&r<=255)return[n,i,r,255*o];throw new Error("Invalid rgb color.")}throw new Error("Invalid rgb color.")}function c(e){var t=/^hsla?\(\s*(\d+)\s*,\s*(\d+)%\s*,\s*(\d+)%\s*(?:,\s*([\d.]+))?\s*\)$/;if(e=e.match(t)){var n=parseInt(e[1],10),i=parseInt(e[2],10),r=parseInt(e[3],10),o=void 0!==e[4]?parseFloat(e[4]):1;if(o=Math.max(0,Math.min(1,o)),n>=0&&n<=360&&i>=0&&i<=100&&r>=0&&r<=100)return[n,i,r,255*o];throw new Error("Invalid hsl color.")}throw new Error("Invalid hsl color.")}var s={aliceblue:"#f0f8ff",antiquewhite:"#faebd7",aqua:"#00ffff",aquamarine:"#7fffd4",azure:"#f0ffff",beige:"#f5f5dc",bisque:"#ffe4c4",black:"#000000",blanchedalmond:"#ffebcd",blue:"#0000ff",blueviolet:"#8a2be2",brown:"#a52a2a",burlywood:"#deb887",cadetblue:"#5f9ea0",chartreuse:"#7fff00",chocolate:"#d2691e",coral:"#ff7f50",cornflowerblue:"#6495ed",cornsilk:"#fff8dc",crimson:"#dc143c",cyan:"#00ffff",darkblue:"#00008b",darkcyan:"#008b8b",darkgoldenrod:"#b8860b",darkgray:"#a9a9a9",darkgrey:"#a9a9a9",darkgreen:"#006400",darkkhaki:"#bdb76b",darkmagenta:"#8b008b",darkolivegreen:"#556b2f",darkorange:"#ff8c00",darkorchid:"#9932cc",darkred:"#8b0000",darksalmon:"#e9967a",darkseagreen:"#8fbc8f",darkslateblue:"#483d8b",darkslategray:"#2f4f4f",darkslategrey:"#2f4f4f",darkturquoise:"#00ced1",darkviolet:"#9400d3",deeppink:"#ff1493",deepskyblue:"#00bfff",dimgray:"#696969",dimgrey:"#696969",dodgerblue:"#1e90ff",firebrick:"#b22222",floralwhite:"#fffaf0",forestgreen:"#228b22",fuchsia:"#ff00ff",gainsboro:"#dcdcdc",ghostwhite:"#f8f8ff",gold:"#ffd700",goldenrod:"#daa520",gray:"#808080",grey:"#808080",green:"#008000",greenyellow:"#adff2f",honeydew:"#f0fff0",hotpink:"#ff69b4",indianred:"#cd5c5c",indigo:"#4b0082",ivory:"#fffff0",khaki:"#f0e68c",lavender:"#e6e6fa",lavenderblush:"#fff0f5",lawngreen:"#7cfc00",lemonchiffon:"#fffacd",lightblue:"#add8e6",lightcoral:"#f08080",lightcyan:"#e0ffff",lightgoldenrodyellow:"#fafad2",lightgray:"#d3d3d3",lightgrey:"#d3d3d3",lightgreen:"#90ee90",lightpink:"#ffb6c1",lightsalmon:"#ffa07a",lightseagreen:"#20b2aa",lightskyblue:"#87cefa",lightslategray:"#778899",lightslategrey:"#778899",lightsteelblue:"#b0c4de",lightyellow:"#ffffe0",lime:"#00ff00",limegreen:"#32cd32",linen:"#faf0e6",magenta:"#ff00ff",maroon:"#800000",mediumaquamarine:"#66cdaa",mediumblue:"#0000cd",mediumorchid:"#ba55d3",mediumpurple:"#9370db",mediumseagreen:"#3cb371",mediumslateblue:"#7b68ee",mediumspringgreen:"#00fa9a",mediumturquoise:"#48d1cc",mediumvioletred:"#c71585",midnightblue:"#191970",mintcream:"#f5fffa",mistyrose:"#ffe4e1",moccasin:"#ffe4b5",navajowhite:"#ffdead",navy:"#000080",oldlace:"#fdf5e6",olive:"#808000",olivedrab:"#6b8e23",orange:"#ffa500",orangered:"#ff4500",orchid:"#da70d6",palegoldenrod:"#eee8aa",palegreen:"#98fb98",paleturquoise:"#afeeee",palevioletred:"#db7093",papayawhip:"#ffefd5",peachpuff:"#ffdab9",peru:"#cd853f",pink:"#ffc0cb",plum:"#dda0dd",powderblue:"#b0e0e6",purple:"#800080",red:"#ff0000",rosybrown:"#bc8f8f",royalblue:"#4169e1",saddlebrown:"#8b4513",salmon:"#fa8072",sandybrown:"#f4a460",seagreen:"#2e8b57",seashell:"#fff5ee",sienna:"#a0522d",silver:"#c0c0c0",skyblue:"#87ceeb",slateblue:"#6a5acd",slategray:"#708090",slategrey:"#708090",snow:"#fffafa",springgreen:"#00ff7f",steelblue:"#4682b4",tan:"#d2b48c",teal:"#008080",thistle:"#d8bfd8",tomato:"#ff6347",turquoise:"#40e0d0",violet:"#ee82ee",wheat:"#f5deb3",white:"#ffffff",whitesmoke:"#f5f5f5",yellow:"#ffff00",yellowgreen:"#9acd32"},u=function(e,t,n){return Math.max(t,Math.min(n,e))},h={RGB:"rgb",HSL:"hsl",HSB:"hsb"},f=function(e,t,n,i){this.r=e,this.g=t,this.b=n,this.a=i,this.mode=h.RGB,this.maxR=255,this.maxG=255,this.maxB=255,this.maxA=255};function d(e,t,n,i,r){if(r===h.RGB){e._colorMode=h.RGB,e._colorMaxes[h.RGB]=[t,n,i,r];for(var o=0;o<e._colorMaxes[h.HSB].length;o++)e._colorMaxes[h.HSB][o]=r}else if(r===h.HSB){e._colorMode=h.HSB,e._colorMaxes[h.HSB]=[t,n,i,r];for(var a=0;a<e._colorMaxes[h.RGB].length;a++)e._colorMaxes[h.RGB][a]=255}else if(r===h.HSL){e._colorMode=h.HSL,e._colorMaxes[h.HSL]=[t,n,i,r];for(var l=0;l<e._colorMaxes[h.RGB].length;l++)e._colorMaxes[h.RGB][l]=255}}f.prototype.toString=function(){return"rgba("+this.r+","+this.g+","+this.b+","+this.a/255+")"},f.prototype.setRed=function(e){this.r=e},f.prototype.setGreen=function(e){this.g=e},f.prototype.setBlue=function(e){this.b=e},f.prototype.setAlpha=function(e){this.a=e},f.prototype.get=function(){return[this.r,this.g,this.b,this.a]};var p=function(e,t,n,i,r,o){for(var a=0,l=0,c=0,s=0,h=0;h<e.length;h++)a+=e[h].r,l+=e[h].g,c+=e[h].b,s+=e[h].a;return new f(a/e.length,l/e.length,c/e.length,s/e.length)},g=function(e,t,n,i,r,o){var a=r/i,l=1-a,c=e.r,s=e.g,h=e.b,u=e.a,d=t.r,p=t.g,g=t.b,m=t.a,v=Math.sqrt,y=v(c*c*l+d*d*a),b=v(s*s*l+p*p*a),x=v(h*h*l+g*g*a),_=u*l+m*a;return new f(y,b,x,_)},m=function(e,t,n,i,r){return r=u(r,0,1),new f(e.r*(1-r)+t.r*r,e.g*(1-r)+t.g*r,e.b*(1-r)+t.b*r,e.a*(1-r)+t.a*r)},v=function(e){return new f(e.r,e.g,e.b,e.a)},y={p5Color:f,ColorMode:h,default:f,colorModeToMaxes:d,rgbToHSB:function(e,t,n){e/=255,t/=255,n/=255;var i,r=Math.max(e,t,n),o=Math.min(e,t
+        let particles = [];
+        let time = 0;
+        
+        class Particle {
+            constructor(angle, radius, index) {
+                this.angle = angle;
+                this.baseRadius = radius;
+                this.index = index;
+                this.trail = [];
+                this.maxTrailLength = 20;
+                this.hue = (index * 30) % 360;
+            }
+            
+            update() {
+                let noiseOffset = noise(this.index * 0.1, time) * 2 - 1;
+                let radiusOffset = noise(this.index * 0.2, time + 100) * 50;
+                
+                this.radius = this.baseRadius + radiusOffset;
+                this.angle += 0.01 + noiseOffset * 0.02;
+                
+                this.x = width/2 + cos(this.angle) * this.radius;
+                this.y = height/2 + sin(this.angle) * this.radius;
+                
+                this.trail.push({x: this.x, y: this.y});
+                if (this.trail.length > this.maxTrailLength) {
+                    this.trail.shift();
+                }
+            }
+            
+            display() {
+                // Draw trail
+                noFill();
+                for (let i = 0; i < this.trail.length; i++) {
+                    let alpha = map(i, 0, this.trail.length, 0, 100);
+                    stroke(this.hue, 70, 80, alpha);
+                    strokeWeight(map(i, 0, this.trail.length, 1, 3));
+                    if (i > 0) {
+                        line(this.trail[i-1].x, this.trail[i-1].y, 
+                             this.trail[i].x, this.trail[i].y);
+                    }
+                }
+                
+                // Draw particle
+                push();
+                translate(this.x, this.y);
+                noStroke();
+                fill(this.hue, 70, 90);
+                
+                // Create icon-like shape
+                beginShape();
+                for (let a = 0; a < TWO_PI; a += PI/3) {
+                    let r = 8 + sin(a * 3 + time * 2) * 3;
+                    let x = cos(a) * r;
+                    let y = sin(a) * r;
+                    vertex(x, y);
+                }
+                endShape(CLOSE);
+                pop();
+            }
+        }
+        
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            colorMode(HSB, 360, 100, 100, 100);
+            
+            // Create particles in symmetrical patterns
+            let numRings = 4;
+            let particlesPerRing = 8;
+            
+            for (let ring = 1; ring <= numRings; ring++) {
+                let radius = ring * 80;
+                for (let i = 0; i < particlesPerRing; i++) {
+                    let angle = (TWO_PI / particlesPerRing) * i;
+                    particles.push(new Particle(angle, radius, particles.length));
+                }
+            }
+        }
+        
+        function draw() {
+            // Fading background for trail effect
+            fill(0, 10);
+            noStroke();
+            rect(0, 0, width, height);
+            
+            // Update and display all particles
+            for (let particle of particles) {
+                particle.update();
+                particle.display();
+            }
+            
+            // Draw center symmetry guides
+            push();
+            translate(width/2, height/2);
+            strokeWeight(0.5);
+            stroke(0, 0, 50, 20);
+            for (let i = 0; i < 8; i++) {
+                rotate(PI/4);
+                line(0, 0, width, 0);
+            }
+            pop();
+            
+            time += 0.01;
+        }
+        
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>
