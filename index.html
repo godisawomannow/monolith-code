@@ -11,42 +11,42 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background: linear-gradient(135deg, #ff7e5f, #feb47b);
-            font-family: Arial, sans-serif;
-            color: white;
-            flex-direction: column;
+            background-color: #f0f0f0;
         }
-        #counter {
-            font-size: 2rem;
-            margin-bottom: 20px;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            border: none;
-            background: #ff7e5f;
-            color: white;
-            border-radius: 5px;
-            transition: transform 0.2s;
-        }
-        button:hover {
-            transform: scale(1.1);
+        .draggable {
+            width: 50px;
+            height: 50px;
+            cursor: move;
         }
     </style>
 </head>
 <body>
-    <div id="counter">Value: 0</div>
-    <button id="incrementButton">Increment</button>
-
+    <svg class="draggable" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black">
+        <circle cx="12" cy="12" r="10" />
+    </svg>
     <script>
-        let value = 0;
-        const counterDisplay = document.getElementById('counter');
-        const incrementButton = document.getElementById('incrementButton');
+        const draggable = document.querySelector('.draggable');
+        let isDragging = false;
+        let offset = { x: 0, y: 0 };
 
-        incrementButton.addEventListener('click', () => {
-            value += 1;
-            counterDisplay.textContent = 'Value: ' + value;
+        draggable.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            offset.x = e.clientX - draggable.getBoundingClientRect().left;
+            offset.y = e.clientY - draggable.getBoundingClientRect().top;
+            document.body.style.userSelect = 'none'; // Prevent text selection
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                draggable.style.position = 'absolute';
+                draggable.style.left = (e.clientX - offset.x) + 'px';
+                draggable.style.top = (e.clientY - offset.y) + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            document.body.style.userSelect = ''; // Restore text selection
         });
     </script>
 </body>
