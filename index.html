@@ -6,48 +6,138 @@
     <title>Agent Render</title>
     <style>
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+            padding: 0;
+            overflow: hidden;
+            background: #1a1a1a;
+            font-family: Arial, sans-serif;
         }
-        .draggable {
-            width: 50px;
-            height: 50px;
-            cursor: move;
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: none;
+        }
+        
+        #icon {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .circle {
+            background: radial-gradient(circle, #fff, #ddd);
+            border-radius: 50%;
+        }
+        
+        .square {
+            background: linear-gradient(135deg, #fff, #ddd);
+        }
+        
+        .triangle {
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 30px solid #fff;
+            background: none;
+        }
+        
+        #shapeBtn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 20;
+        }
+        
+        #shapeBtn:hover {
+            background: #444;
         }
     </style>
 </head>
 <body>
-    <svg class="draggable" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black">
-        <circle cx="12" cy="12" r="10" />
-    </svg>
+    <canvas id="canvas"></canvas>
+    <div id="icon" class="circle"></div>
+    <button id="shapeBtn">Change Shape</button>
+    
     <script>
-        const draggable = document.querySelector('.draggable');
-        let isDragging = false;
-        let offset = { x: 0, y: 0 };
-
-        draggable.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            offset.x = e.clientX - draggable.getBoundingClientRect().left;
-            offset.y = e.clientY - draggable.getBoundingClientRect().top;
-            document.body.style.userSelect = 'none'; // Prevent text selection
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const icon = document.getElementById('icon');
+        const shapeBtn = document.getElementById('shapeBtn');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        let mouseX = 0;
+        let mouseY = 0;
+        let trail = [];
+        const maxTrailLength = 20;
+        let currentShape = 0;
+        const shapes = ['circle', 'square', 'triangle'];
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         });
-
+        
         document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                draggable.style.position = 'absolute';
-                draggable.style.left = (e.clientX - offset.x) + 'px';
-                draggable.style.top = (e.clientY - offset.y) + 'px';
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            icon.style.left = (mouseX - 15) + 'px';
+            icon.style.top = (mouseY - 15) + 'px';
+            
+            trail.push({ x: mouseX, y: mouseY });
+            if (trail.length > maxTrailLength) {
+                trail.shift();
             }
         });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            document.body.style.userSelect = ''; // Restore text selection
+        
+        shapeBtn.addEventListener('click', () => {
+            icon.classList.remove(shapes[currentShape]);
+            currentShape = (currentShape + 1) % shapes.length;
+            icon.classList.add(shapes[currentShape]);
         });
+        
+        function animate() {
+            ctx.fillStyle = 'rgba(26, 26, 26, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < trail.length; i++) {
+                const point = trail[i];
+                const progress = i / trail.length;
+                const hue = (Date.now() * 0.1 + i * 10) % 360;
+                
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, progress * 8, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${hue}, 100%, 50%, ${progress * 0.5})`;
+                ctx.fill();
+                
+                if (i > 0) {
+                    const prevPoint = trail[i - 1];
+                    ctx.beginPath();
+                    ctx.moveTo(prevPoint.x, prevPoint.y);
+                    ctx.lineTo(point.x, point.y);
+                    ctx.strokeStyle = `hsla(${hue}, 100%, 50%, ${progress * 0.3})`;
+                    ctx.lineWidth = progress * 3;
+                    ctx.stroke();
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
     </script>
 </body>
 </html>
