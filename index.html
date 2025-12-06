@@ -6,16 +6,29 @@
     <title>Agent Render</title>
     <style>
         body {
-            background-color: green;
-            color: white;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(270deg, oklch(0.4, 0.5, 0.6), oklch(0.4, 0.8, 0.7));
+            background-size: 400% 400%;
+            animation: gradientAnimation 8s ease infinite;
+        }
+        
+        @keyframes gradientAnimation {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Welcome to Agent Render</h1>
-    <p>This page is rendered in green!</p>
 </body>
 </html>
