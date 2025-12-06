@@ -9,71 +9,50 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background: #1a1a1a;
+            background-color: #1a1a1a;
             font-family: Arial, sans-serif;
         }
-        
-        #canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
+        canvas {
+            display: block;
             cursor: none;
         }
-        
         #icon {
             position: absolute;
             width: 30px;
             height: 30px;
             pointer-events: none;
-            z-index: 10;
+            transition: none;
         }
-        
-        .circle {
-            background: radial-gradient(circle, #fff, #ddd);
-            border-radius: 50%;
-        }
-        
-        .square {
-            background: linear-gradient(135deg, #fff, #ddd);
-        }
-        
-        .triangle {
-            width: 0;
-            height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-bottom: 30px solid #fff;
-            background: none;
-        }
-        
-        #shapeBtn {
+        button {
             position: absolute;
             top: 20px;
             left: 20px;
             padding: 10px 20px;
-            background: #333;
+            background-color: #333;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            z-index: 20;
+            font-size: 14px;
         }
-        
-        #shapeBtn:hover {
-            background: #444;
+        button:hover {
+            background-color: #555;
         }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
-    <div id="icon" class="circle"></div>
-    <button id="shapeBtn">Change Shape</button>
+    <div id="icon">
+        <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="15" cy="15" r="12" fill="#fff" />
+        </svg>
+    </div>
+    <button onclick="changeShape()">Change Shape</button>
     
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const icon = document.getElementById('icon');
-        const shapeBtn = document.getElementById('shapeBtn');
         
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -81,14 +60,59 @@
         let mouseX = 0;
         let mouseY = 0;
         let trail = [];
-        const maxTrailLength = 20;
         let currentShape = 0;
-        const shapes = ['circle', 'square', 'triangle'];
+        const shapes = ['circle', 'square', 'triangle', 'star'];
         
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
+        const maxTrailLength = 30;
+        
+        function drawShape(shape, size) {
+            const svg = icon.querySelector('svg');
+            svg.innerHTML = '';
+            
+            switch(shape) {
+                case 'circle':
+                    svg.innerHTML = '<circle cx="15" cy="15" r="12" fill="#fff" />';
+                    break;
+                case 'square':
+                    svg.innerHTML = '<rect x="3" y="3" width="24" height="24" fill="#fff" />';
+                    break;
+                case 'triangle':
+                    svg.innerHTML = '<polygon points="15,3 27,27 3,27" fill="#fff" />';
+                    break;
+                case 'star':
+                    svg.innerHTML = '<polygon points="15,2 19,11 28,11 21,17 23,26 15,21 7,26 9,17 2,11 11,11" fill="#fff" />';
+                    break;
+            }
+        }
+        
+        function changeShape() {
+            currentShape = (currentShape + 1) % shapes.length;
+            drawShape(shapes[currentShape], 30);
+        }
+        
+        function getIridescentColor(index, total) {
+            const hue = (index / total) * 360 + (Date.now() / 10) % 360;
+            const lightness = 50 + (index / total) * 30;
+            return `hsl(${hue}, 100%, ${lightness}%)`;
+        }
+        
+        function drawTrail() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < trail.length; i++) {
+                const point = trail[i];
+                const alpha = i / trail.length;
+                const size = (i / trail.length) * 15 + 2;
+                
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+                ctx.fillStyle = getIridescentColor(i, trail.length);
+                ctx.globalAlpha = alpha * 0.7;
+                ctx.fill();
+            }
+            
+            ctx.globalAlpha = 1;
+        }
         
         document.addEventListener('mousemove', (e) => {
             mouseX = e.clientX;
@@ -98,44 +122,21 @@
             icon.style.top = (mouseY - 15) + 'px';
             
             trail.push({ x: mouseX, y: mouseY });
+            
             if (trail.length > maxTrailLength) {
                 trail.shift();
             }
         });
         
-        shapeBtn.addEventListener('click', () => {
-            icon.classList.remove(shapes[currentShape]);
-            currentShape = (currentShape + 1) % shapes.length;
-            icon.classList.add(shapes[currentShape]);
-        });
-        
         function animate() {
-            ctx.fillStyle = 'rgba(26, 26, 26, 0.1)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            for (let i = 0; i < trail.length; i++) {
-                const point = trail[i];
-                const progress = i / trail.length;
-                const hue = (Date.now() * 0.1 + i * 10) % 360;
-                
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, progress * 8, 0, Math.PI * 2);
-                ctx.fillStyle = `hsla(${hue}, 100%, 50%, ${progress * 0.5})`;
-                ctx.fill();
-                
-                if (i > 0) {
-                    const prevPoint = trail[i - 1];
-                    ctx.beginPath();
-                    ctx.moveTo(prevPoint.x, prevPoint.y);
-                    ctx.lineTo(point.x, point.y);
-                    ctx.strokeStyle = `hsla(${hue}, 100%, 50%, ${progress * 0.3})`;
-                    ctx.lineWidth = progress * 3;
-                    ctx.stroke();
-                }
-            }
-            
+            drawTrail();
             requestAnimationFrame(animate);
         }
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
         
         animate();
     </script>
