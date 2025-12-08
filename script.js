@@ -51,6 +51,7 @@ let particles = [];
 let grid;
 let cellSize = 10;
 let cols, rows;
+let cursedText = '';
 
 class Particle {
     constructor(x, y, species) {
@@ -269,6 +270,51 @@ function setup() {
             ));
         }
     }
+
+    // Set up cursed input
+    const textInput = document.getElementById('text-input');
+    
+    // Curse the initial value
+    cursedText = curseText(textInput.value);
+    textInput.value = cursedText;
+    
+    // Handle input with curse
+    textInput.addEventListener('input', (e) => {
+        const cursorPos = e.target.selectionStart;
+        const originalText = e.target.value;
+        
+        // Apply curse to the entire text
+        cursedText = curseText(originalText);
+        e.target.value = cursedText;
+        
+        // Try to maintain cursor position
+        e.target.setSelectionRange(cursorPos, cursorPos);
+    });
+
+    // Handle paste events
+    textInput.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        const cursedPaste = curseText(pastedText);
+        
+        const start = e.target.selectionStart;
+        const end = e.target.selectionEnd;
+        const text = e.target.value;
+        
+        e.target.value = text.substring(0, start) + cursedPaste + text.substring(end);
+        e.target.setSelectionRange(start + cursedPaste.length, start + cursedPaste.length);
+    });
+}
+
+function curseText(text) {
+    let cursed = '';
+    for (let i = 0; i < text.length; i++) {
+        const charCode = text.charCodeAt(i);
+        // Add 16 to the Unicode value and convert back to character
+        const cursedChar = String.fromCharCode(charCode + 16);
+        cursed += cursedChar;
+    }
+    return cursed;
 }
 
 function draw() {
