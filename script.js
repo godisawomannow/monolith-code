@@ -1,6 +1,6 @@
 let pixels = [];
 let partitions = [];
-let pixelSize = 2;
+let pixelSize = 24; // Increased for emoji size
 let cols, rows;
 let sortingSpeed = 3;
 let activeSorts = [];
@@ -13,6 +13,8 @@ class Pixel {
         this.brightness = brightness;
         this.moving = false;
         this.speed = random(2, 5);
+        this.rotation = 0;
+        this.targetRotation = 0;
     }
 
     update() {
@@ -20,9 +22,12 @@ class Pixel {
             let dx = this.targetX - this.x;
             if (abs(dx) > 0.5) {
                 this.x += dx * 0.1 * this.speed;
+                // Add rotation while moving
+                this.rotation += 0.1;
             } else {
                 this.x = this.targetX;
                 this.moving = false;
+                this.rotation = this.targetRotation;
             }
         }
     }
@@ -30,13 +35,34 @@ class Pixel {
     setTarget(newX) {
         this.targetX = newX;
         this.moving = true;
+        this.targetRotation = 0;
     }
 
     display() {
         push();
-        noStroke();
-        fill(this.brightness);
-        rect(this.x, this.y, pixelSize, pixelSize);
+        // Map brightness to transparency and slight size variation
+        let alpha = map(this.brightness, 0, 255, 30, 255);
+        let size = map(this.brightness, 0, 255, pixelSize * 0.7, pixelSize);
+        
+        textAlign(CENTER, CENTER);
+        textSize(size);
+        
+        // Apply rotation if moving
+        translate(this.x + pixelSize/2, this.y + pixelSize/2);
+        if (this.moving) {
+            rotate(this.rotation);
+        }
+        
+        // Set color based on brightness
+        if (this.brightness < 85) {
+            fill(255, 255, 255, alpha * 0.5); // Dimmer foxes
+        } else if (this.brightness < 170) {
+            fill(255, 255, 255, alpha * 0.75); // Medium foxes
+        } else {
+            fill(255, 255, 255, alpha); // Bright foxes
+        }
+        
+        text('🦊', 0, 0);
         pop();
     }
 }
