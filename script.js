@@ -1,257 +1,157 @@
-// Species definitions with unique behaviors
-const SPECIES = {
-    predator: {
-        color: [255, 100, 100],
-        speed: 2.5,
-        size: 3,
-        lifespan: 300,
-        reproductionRate: 0.02,
-        energy: 100,
-        behavior: 'hunt'
-    },
-    prey: {
-        color: [100, 255, 100],
-        speed: 2.0,
-        size: 2,
-        lifespan: 200,
-        reproductionRate: 0.04,
-        energy: 50,
-        behavior: 'flee'
-    },
-    scavenger: {
-        color: [255, 255, 100],
-        speed: 1.5,
-        size: 2.5,
-        lifespan: 400,
-        reproductionRate: 0.03,
-        energy: 75,
-        behavior: 'wander'
-    },
-    parasite: {
-        color: [255, 100, 255],
-        speed: 3.0,
-        size: 1.5,
-        lifespan: 150,
-        reproductionRate: 0.05,
-        energy: 30,
-        behavior: 'attach'
-    },
-    plant: {
-        color: [100, 200, 100],
-        speed: 0,
-        size: 4,
-        lifespan: 500,
-        reproductionRate: 0.01,
-        energy: 25,
-        behavior: 'static'
-    }
-};
-
-let particles = [];
-let grid;
-let cellSize = 10;
+let pixels = [];
+let partitions = [];
+let pixelSize = 2;
 let cols, rows;
-let cursedText = '';
+let sortingSpeed = 3;
+let activeSorts = [];
 
-class Particle {
-    constructor(x, y, species) {
-        this.pos = createVector(x, y);
-        this.vel = createVector(random(-1, 1), random(-1, 1));
-        this.acc = createVector(0, 0);
-        this.species = species;
-        this.config = SPECIES[species];
-        this.energy = this.config.energy;
-        this.age = 0;
-        this.size = this.config.size;
-        this.reproductionCooldown = 0;
+class Pixel {
+    constructor(x, y, brightness) {
+        this.x = x;
+        this.y = y;
+        this.targetX = x;
+        this.brightness = brightness;
+        this.moving = false;
+        this.speed = random(2, 5);
     }
 
     update() {
-        this.age++;
-        this.reproductionCooldown = max(0, this.reproductionCooldown - 1);
-        
-        // Apply behavior
-        switch(this.config.behavior) {
-            case 'hunt':
-                this.hunt();
-                break;
-            case 'flee':
-                this.flee();
-                break;
-            case 'wander':
-                this.wander();
-                break;
-            case 'attach':
-                this.attach();
-                break;
-            case 'static':
-                this.vel.mult(0);
-                break;
-        }
-
-        // Update physics
-        if (this.config.speed > 0) {
-            this.vel.add(this.acc);
-            this.vel.limit(this.config.speed);
-            this.pos.add(this.vel);
-            this.acc.mult(0);
-        }
-
-        // Wrap around edges
-        this.pos.x = (this.pos.x + width) % width;
-        this.pos.y = (this.pos.y + height) % height;
-
-        // Energy decay
-        this.energy -= 0.5;
-        if (this.species === 'plant') {
-            this.energy = min(this.config.energy * 2, this.energy + 1);
-        }
-
-        // Reproduction
-        if (random() < this.config.reproductionRate && 
-            this.reproductionCooldown === 0 && 
-            this.energy > this.config.energy * 0.5) {
-            this.reproduce();
-        }
-    }
-
-    hunt() {
-        let closest = null;
-        let closestDist = Infinity;
-        
-        for (let p of particles) {
-            if (p !== this && (p.species === 'prey' || p.species === 'plant')) {
-                let d = p5.Vector.dist(this.pos, p.pos);
-                if (d < closestDist && d < 100) {
-                    closest = p;
-                    closestDist = d;
-                }
-            }
-        }
-
-        if (closest) {
-            let force = p5.Vector.sub(closest.pos, this.pos);
-            force.normalize();
-            force.mult(0.5);
-            this.acc.add(force);
-
-            // Eat if close enough
-            if (closestDist < 10) {
-                this.energy += closest.energy * 0.5;
-                closest.energy = 0;
+        if (this.moving) {
+            let dx = this.targetX - this.x;
+            if (abs(dx) > 0.5) {
+                this.x += dx * 0.1 * this.speed;
+            } else {
+                this.x = this.targetX;
+                this.moving = false;
             }
         }
     }
 
-    flee() {
-        for (let p of particles) {
-            if (p.species === 'predator') {
-                let d = p5.Vector.dist(this.pos, p.pos);
-                if (d < 50) {
-                    let force = p5.Vector.sub(this.pos, p.pos);
-                    force.normalize();
-                    force.mult(0.8);
-                    this.acc.add(force);
-                }
-            }
-        }
-        
-        // Also move towards plants
-        for (let p of particles) {
-            if (p.species === 'plant') {
-                let d = p5.Vector.dist(this.pos, p.pos);
-                if (d < 30 && d > 5) {
-                    let force = p5.Vector.sub(p.pos, this.pos);
-                    force.normalize();
-                    force.mult(0.3);
-                    this.acc.add(force);
-                }
-                
-                // Eat plant
-                if (d < 10) {
-                    this.energy += 10;
-                    p.energy -= 10;
-                }
-            }
-        }
-    }
-
-    wander() {
-        this.acc.add(p5.Vector.random2D().mult(0.1));
-        
-        // Look for dead particles
-        for (let p of particles) {
-            if (p.energy <= 0) {
-                let d = p5.Vector.dist(this.pos, p.pos);
-                if (d < 50) {
-                    let force = p5.Vector.sub(p.pos, this.pos);
-                    force.normalize();
-                    force.mult(0.4);
-                    this.acc.add(force);
-                    
-                    if (d < 10) {
-                        this.energy += 15;
-                        p.energy = -100; // Mark for removal
-                    }
-                }
-            }
-        }
-    }
-
-    attach() {
-        let closest = null;
-        let closestDist = Infinity;
-        
-        for (let p of particles) {
-            if (p !== this && p.species !== 'parasite' && p.species !== 'plant') {
-                let d = p5.Vector.dist(this.pos, p.pos);
-                if (d < closestDist && d < 80) {
-                    closest = p;
-                    closestDist = d;
-                }
-            }
-        }
-
-        if (closest) {
-            let force = p5.Vector.sub(closest.pos, this.pos);
-            force.normalize();
-            force.mult(0.6);
-            this.acc.add(force);
-
-            // Drain energy if attached
-            if (closestDist < 5) {
-                this.energy += 0.5;
-                closest.energy -= 1;
-                this.pos = closest.pos.copy();
-            }
-        } else {
-            this.wander();
-        }
-    }
-
-    reproduce() {
-        if (particles.length < 5000) { // Performance cap
-            let offspring = new Particle(
-                this.pos.x + random(-10, 10),
-                this.pos.y + random(-10, 10),
-                this.species
-            );
-            particles.push(offspring);
-            this.energy *= 0.6;
-            this.reproductionCooldown = 60;
-        }
-    }
-
-    isDead() {
-        return this.energy <= 0 || this.age > this.config.lifespan;
+    setTarget(newX) {
+        this.targetX = newX;
+        this.moving = true;
     }
 
     display() {
         push();
         noStroke();
-        let alpha = map(this.energy, 0, this.config.energy, 50, 255);
-        fill(...this.config.color, alpha);
-        circle(this.pos.x, this.pos.y, this.size * 2);
+        fill(this.brightness);
+        rect(this.x, this.y, pixelSize, pixelSize);
+        pop();
+    }
+}
+
+class Partition {
+    constructor(startY, height) {
+        this.startY = startY;
+        this.height = height;
+        this.pixels = [];
+        this.sorting = false;
+        this.sortProgress = 0;
+        this.sortDirection = random() > 0.5 ? 1 : -1; // 1 for ascending, -1 for descending
+        this.sortType = random(['bubble', 'quick', 'merge']);
+    }
+
+    addPixel(pixel) {
+        this.pixels.push(pixel);
+    }
+
+    startSort() {
+        this.sorting = true;
+        this.sortProgress = 0;
+        
+        // Shuffle pixels first for visual effect
+        for (let i = this.pixels.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.pixels[i], this.pixels[j]] = [this.pixels[j], this.pixels[i]];
+        }
+        
+        // Update positions
+        this.updatePixelPositions();
+    }
+
+    updatePixelPositions() {
+        for (let i = 0; i < this.pixels.length; i++) {
+            this.pixels[i].setTarget(i * pixelSize);
+        }
+    }
+
+    sort() {
+        if (!this.sorting) return false;
+
+        let sorted = false;
+        
+        // Bubble sort with visual steps
+        for (let step = 0; step < sortingSpeed && !sorted; step++) {
+            sorted = true;
+            
+            for (let i = 0; i < this.pixels.length - 1 - this.sortProgress; i++) {
+                let shouldSwap = this.sortDirection === 1 ? 
+                    this.pixels[i].brightness > this.pixels[i + 1].brightness :
+                    this.pixels[i].brightness < this.pixels[i + 1].brightness;
+                    
+                if (shouldSwap) {
+                    // Swap pixels
+                    [this.pixels[i], this.pixels[i + 1]] = [this.pixels[i + 1], this.pixels[i]];
+                    sorted = false;
+                }
+            }
+            
+            this.sortProgress++;
+        }
+
+        // Update positions after sorting
+        this.updatePixelPositions();
+
+        if (sorted || this.sortProgress >= this.pixels.length) {
+            this.sorting = false;
+            return false;
+        }
+        
+        return true;
+    }
+
+    isSorted() {
+        for (let i = 0; i < this.pixels.length - 1; i++) {
+            let inOrder = this.sortDirection === 1 ? 
+                this.pixels[i].brightness <= this.pixels[i + 1].brightness :
+                this.pixels[i].brightness >= this.pixels[i + 1].brightness;
+            if (!inOrder) return false;
+        }
+        return true;
+    }
+
+    update() {
+        // Update all pixels in partition
+        for (let pixel of this.pixels) {
+            pixel.update();
+        }
+
+        // Continue sorting if active
+        if (this.sorting) {
+            return this.sort();
+        }
+        
+        // Check if sorted and randomly reshuffle
+        if (!this.sorting && this.isSorted() && random() < 0.01) {
+            this.sortDirection = random() > 0.5 ? 1 : -1;
+            this.startSort();
+            return true;
+        }
+        
+        return false;
+    }
+
+    display() {
+        for (let pixel of this.pixels) {
+            pixel.display();
+        }
+        
+        // Draw partition boundary
+        push();
+        stroke(40);
+        strokeWeight(1);
+        line(0, this.startY, width, this.startY);
         pop();
     }
 }
@@ -259,111 +159,101 @@ class Particle {
 function setup() {
     createCanvas(windowWidth, windowHeight);
     
-    // Initialize particles
-    for (let species in SPECIES) {
-        let count = species === 'plant' ? 100 : 50;
-        for (let i = 0; i < count; i++) {
-            particles.push(new Particle(
-                random(width),
-                random(height),
-                species
-            ));
+    // Calculate grid
+    cols = Math.floor(width / pixelSize);
+    rows = Math.floor(height / pixelSize);
+    
+    // Create partitions
+    let partitionCount = random(5, 15);
+    let partitionHeight = Math.floor(rows / partitionCount);
+    
+    for (let p = 0; p < partitionCount; p++) {
+        let startY = p * partitionHeight * pixelSize;
+        let height = partitionHeight * pixelSize;
+        partitions.push(new Partition(startY, height));
+    }
+    
+    // Create pixels and assign to partitions
+    for (let y = 0; y < rows; y++) {
+        let partitionIndex = Math.floor(y / partitionHeight);
+        if (partitionIndex >= partitions.length) partitionIndex = partitions.length - 1;
+        
+        for (let x = 0; x < cols; x++) {
+            // Create various patterns of brightness
+            let brightness;
+            let pattern = noise(x * 0.01, y * 0.01);
+            
+            if (pattern < 0.3) {
+                brightness = random(0, 85);
+            } else if (pattern < 0.6) {
+                brightness = random(85, 170);
+            } else {
+                brightness = random(170, 255);
+            }
+            
+            // Add some structure
+            brightness += sin(x * 0.1) * 20 + cos(y * 0.1) * 20;
+            brightness = constrain(brightness, 0, 255);
+            
+            let pixel = new Pixel(x * pixelSize, y * pixelSize, brightness);
+            partitions[partitionIndex].addPixel(pixel);
         }
     }
-
-    // Set up cursed input
-    const textInput = document.getElementById('text-input');
     
-    // Curse the initial value
-    cursedText = curseText(textInput.value);
-    textInput.value = cursedText;
-    
-    // Handle input with curse
-    textInput.addEventListener('input', (e) => {
-        const cursorPos = e.target.selectionStart;
-        const originalText = e.target.value;
-        
-        // Apply curse to the entire text
-        cursedText = curseText(originalText);
-        e.target.value = cursedText;
-        
-        // Try to maintain cursor position
-        e.target.setSelectionRange(cursorPos, cursorPos);
-    });
-
-    // Handle paste events
-    textInput.addEventListener('paste', (e) => {
-        e.preventDefault();
-        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-        const cursedPaste = curseText(pastedText);
-        
-        const start = e.target.selectionStart;
-        const end = e.target.selectionEnd;
-        const text = e.target.value;
-        
-        e.target.value = text.substring(0, start) + cursedPaste + text.substring(end);
-        e.target.setSelectionRange(start + cursedPaste.length, start + cursedPaste.length);
-    });
-}
-
-function curseText(text) {
-    let cursed = '';
-    for (let i = 0; i < text.length; i++) {
-        const charCode = text.charCodeAt(i);
-        // Add 16 to the Unicode value and convert back to character
-        const cursedChar = String.fromCharCode(charCode + 16);
-        cursed += cursedChar;
+    // Start initial sorts
+    for (let i = 0; i < 3 && i < partitions.length; i++) {
+        let randomPartition = random(partitions);
+        randomPartition.startSort();
     }
-    return cursed;
 }
 
 function draw() {
-    background(0, 20);
+    background(0);
     
-    // Update and display particles
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        p.update();
-        
-        if (p.isDead()) {
-            particles.splice(i, 1);
+    // Update and display all partitions
+    activeSorts = [];
+    for (let partition of partitions) {
+        if (partition.update()) {
+            activeSorts.push(partition);
+        }
+        partition.display();
+    }
+    
+    // Randomly start new sorts
+    if (random() < 0.02 && activeSorts.length < 5) {
+        let unsortedPartitions = partitions.filter(p => !p.sorting && !p.isSorted());
+        if (unsortedPartitions.length > 0) {
+            random(unsortedPartitions).startSort();
         } else {
-            p.display();
+            // If all are sorted, pick a random one to shuffle
+            random(partitions).startSort();
         }
     }
     
     // Update stats
     updateStats();
-    
-    // Occasionally spawn new plants
-    if (frameCount % 60 === 0 && particles.filter(p => p.species === 'plant').length < 50) {
-        particles.push(new Particle(random(width), random(height), 'plant'));
-    }
 }
 
 function updateStats() {
-    let speciesCount = {};
-    for (let p of particles) {
-        speciesCount[p.species] = (speciesCount[p.species] || 0) + 1;
-    }
-    
-    document.getElementById('species-count').textContent = Object.keys(speciesCount).length;
-    document.getElementById('cell-count').textContent = particles.length;
+    document.getElementById('partition-count').textContent = partitions.length;
+    document.getElementById('active-sorts').textContent = activeSorts.length;
     document.getElementById('fps').textContent = Math.round(frameRate());
 }
 
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
+    
+    // Recreate the visualization with new dimensions
+    pixels = [];
+    partitions = [];
+    activeSorts = [];
+    setup();
 }
 
-// Add new particles on click
+// Click to trigger sort in nearest partition
 function mousePressed() {
-    let species = random(Object.keys(SPECIES));
-    for (let i = 0; i < 5; i++) {
-        particles.push(new Particle(
-            mouseX + random(-20, 20),
-            mouseY + random(-20, 20),
-            species
-        ));
+    let partitionIndex = Math.floor(mouseY / (height / partitions.length));
+    if (partitionIndex >= 0 && partitionIndex < partitions.length) {
+        partitions[partitionIndex].startSort();
     }
 }
