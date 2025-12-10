@@ -1,6 +1,6 @@
 let pixels = [];
 let partitions = [];
-let pixelSize = 24; // Increased for emoji size
+let pixelSize = 80; // Increased for text display
 let cols, rows;
 let sortingSpeed = 3;
 let activeSorts = [];
@@ -15,6 +15,7 @@ class Pixel {
         this.speed = random(2, 5);
         this.rotation = 0;
         this.targetRotation = 0;
+        this.glitch = 0;
     }
 
     update() {
@@ -24,10 +25,12 @@ class Pixel {
                 this.x += dx * 0.1 * this.speed;
                 // Add rotation while moving
                 this.rotation += 0.1;
+                this.glitch = random(0, 5);
             } else {
                 this.x = this.targetX;
                 this.moving = false;
                 this.rotation = this.targetRotation;
+                this.glitch = 0;
             }
         }
     }
@@ -40,29 +43,51 @@ class Pixel {
 
     display() {
         push();
-        // Map brightness to transparency and slight size variation
+        // Map brightness to transparency and effects
         let alpha = map(this.brightness, 0, 255, 30, 255);
-        let size = map(this.brightness, 0, 255, pixelSize * 0.7, pixelSize);
+        let size = map(this.brightness, 0, 255, 8, 12);
         
         textAlign(CENTER, CENTER);
         textSize(size);
+        textFont('monospace');
         
-        // Apply rotation if moving
+        // Apply rotation and glitch effect if moving
         translate(this.x + pixelSize/2, this.y + pixelSize/2);
         if (this.moving) {
             rotate(this.rotation);
+            translate(random(-this.glitch, this.glitch), random(-this.glitch, this.glitch));
         }
         
-        // Set color based on brightness
+        // Set color based on brightness with cyberpunk colors
         if (this.brightness < 85) {
-            fill(255, 255, 255, alpha * 0.5); // Dimmer foxes
+            fill(0, 255, 0, alpha * 0.5); // Green for dim
+            stroke(0, 100, 0, alpha * 0.3);
         } else if (this.brightness < 170) {
-            fill(255, 255, 255, alpha * 0.75); // Medium foxes
+            fill(255, 0, 255, alpha * 0.75); // Magenta for medium
+            stroke(100, 0, 100, alpha * 0.3);
         } else {
-            fill(255, 255, 255, alpha); // Bright foxes
+            fill(0, 255, 255, alpha); // Cyan for bright
+            stroke(0, 100, 100, alpha * 0.3);
         }
         
-        text('🦊', 0, 0);
+        strokeWeight(0.5);
+        
+        // Display the text with glitch variations
+        let displayText = "bushi pwned";
+        if (this.moving && random() < 0.1) {
+            // Occasionally glitch the text while moving
+            let glitchTexts = ["bu5h1 pwn3d", "b̸u̷s̶h̴i̵ ̶p̷w̸n̵e̶d̷", "BUSHI PWNED", "βυѕнι ρωηє∂"];
+            displayText = random(glitchTexts);
+        }
+        
+        text(displayText, 0, 0);
+        
+        // Add some digital artifact lines
+        if (this.brightness > 200 && random() < 0.05) {
+            stroke(255, 255, 255, alpha * 0.3);
+            line(-pixelSize/2, 0, pixelSize/2, 0);
+        }
+        
         pop();
     }
 }
@@ -173,10 +198,15 @@ class Partition {
             pixel.display();
         }
         
-        // Draw partition boundary
+        // Draw partition boundary with glitch effect
         push();
-        stroke(40);
-        strokeWeight(1);
+        if (this.sorting) {
+            stroke(random(100, 255), 0, random(100, 255), 100);
+            strokeWeight(2);
+        } else {
+            stroke(40);
+            strokeWeight(1);
+        }
         line(0, this.startY, width, this.startY);
         pop();
     }
@@ -234,7 +264,16 @@ function setup() {
 }
 
 function draw() {
-    background(0);
+    background(0, 0, 0, 255);
+    
+    // Add subtle scan lines
+    push();
+    for (let i = 0; i < height; i += 4) {
+        stroke(255, 255, 255, 5);
+        strokeWeight(1);
+        line(0, i, width, i);
+    }
+    pop();
     
     // Update and display all partitions
     activeSorts = [];
@@ -282,4 +321,10 @@ function mousePressed() {
     if (partitionIndex >= 0 && partitionIndex < partitions.length) {
         partitions[partitionIndex].startSort();
     }
+}
+
+// Simple noise function
+function noise(x, y = 0) {
+    const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+    return n - Math.floor(n);
 }
