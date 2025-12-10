@@ -2,7 +2,7 @@ body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background: #1a1a1a;
+    background: #0a0a0a;
     font-family: monospace;
     color: #fff;
 }
@@ -13,35 +13,38 @@ canvas {
 }
 
 #toolbar {
-    position: absolute;
+    position: fixed;
     top: 10px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    padding: 10px;
-    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 8px;
+    border-radius: 8px;
     display: flex;
-    gap: 20px;
+    gap: 15px;
     align-items: center;
     z-index: 100;
     border: 1px solid #333;
+    max-width: 90%;
+    flex-wrap: wrap;
 }
 
 .tool-group {
     display: flex;
-    gap: 5px;
+    gap: 4px;
 }
 
 .tool {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
     border: 2px solid #333;
     background: #222;
     color: #fff;
     cursor: pointer;
-    border-radius: 5px;
+    border-radius: 4px;
     transition: all 0.2s;
+    padding: 0;
 }
 
 .tool:hover {
@@ -52,33 +55,34 @@ canvas {
 .tool.active {
     border-color: #00ff00;
     background: #003300;
-    box-shadow: 0 0 10px #00ff00;
+    box-shadow: 0 0 8px #00ff00;
 }
 
 .color-palette {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 #color-picker {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     border: 2px solid #333;
-    border-radius: 5px;
+    border-radius: 4px;
     cursor: pointer;
     background: none;
+    padding: 0;
 }
 
 .preset-colors {
     display: flex;
-    gap: 5px;
+    gap: 3px;
 }
 
 .color-preset {
-    width: 25px;
-    height: 25px;
-    border: 2px solid #333;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #333;
     border-radius: 3px;
     cursor: pointer;
     transition: all 0.2s;
@@ -90,61 +94,52 @@ canvas {
 
 .color-preset.active {
     border-color: #fff;
-    box-shadow: 0 0 5px currentColor;
+    box-shadow: 0 0 4px currentColor;
 }
 
 .controls {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
 }
 
 .controls button {
-    padding: 8px 15px;
+    padding: 6px 12px;
     background: #222;
     border: 1px solid #333;
     color: #fff;
-    border-radius: 5px;
+    border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
+    font-size: 12px;
 }
 
 .controls button:hover {
     background: #333;
 }
 
-.size-control {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 12px;
-}
-
-#pixel-size {
-    width: 80px;
-}
-
 #info {
-    position: absolute;
+    position: fixed;
     bottom: 10px;
     left: 10px;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 10px;
-    border-radius: 5px;
-    font-size: 12px;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 11px;
     border: 1px solid #333;
 }
 
 #info div {
-    margin: 3px 0;
+    margin: 2px 0;
 }
 
 #info span {
     font-weight: bold;
 }
 
-/* Canvas styles */
-.canvas-cursor-pencil { cursor: crosshair !important; }
-.canvas-cursor-eraser { cursor: cell !important; }
-.canvas-cursor-fill { cursor: pointer !important; }
-.canvas-cursor-eyedropper { cursor: grab !important; }
+/* Cursor styles */
+.cursor-pencil { cursor: crosshair !important; }
+.cursor-eraser { cursor: cell !important; }
+.cursor-fill { cursor: pointer !important; }
+.cursor-eyedropper { cursor: grab !important; }
+.cursor-rotating { cursor: move !important; }

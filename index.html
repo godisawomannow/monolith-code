@@ -7,10 +7,10 @@
 <body>
     <div id="toolbar">
         <div class="tool-group">
-            <button class="tool active" data-tool="pencil">✏️</button>
-            <button class="tool" data-tool="eraser">🧹</button>
-            <button class="tool" data-tool="fill">🪣</button>
-            <button class="tool" data-tool="eyedropper">💉</button>
+            <button class="tool active" data-tool="pencil" title="Pencil (P)">✏️</button>
+            <button class="tool" data-tool="eraser" title="Eraser (E)">🧹</button>
+            <button class="tool" data-tool="fill" title="Fill (F)">🪣</button>
+            <button class="tool" data-tool="eyedropper" title="Eyedropper (I)">💉</button>
         </div>
         <div class="color-palette">
             <input type="color" id="color-picker" value="#00ff00">
@@ -20,18 +20,14 @@
             <button id="clear-btn">Clear</button>
             <button id="grid-toggle">Grid</button>
             <button id="save-btn">Save</button>
-            <div class="size-control">
-                Size: <input type="range" id="pixel-size" min="8" max="32" value="16">
-                <span id="size-display">16</span>
-            </div>
         </div>
     </div>
     <div id="info">
         <div>Tool: <span id="current-tool">pencil</span></div>
         <div>Color: <span id="current-color" style="color: #00ff00">#00ff00</span></div>
-        <div>Grid: <span id="grid-size">0x0</span></div>
+        <div>Rotation: <span id="rotation-info">0°, 0°</span></div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
