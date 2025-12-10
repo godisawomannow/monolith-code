@@ -88,6 +88,12 @@ function init() {
     renderer.domElement.addEventListener('mousemove', onMouseMove);
     renderer.domElement.addEventListener('mouseup', onMouseUp);
     renderer.domElement.addEventListener('wheel', onWheel);
+    
+    // Touch events for mobile
+    renderer.domElement.addEventListener('touchstart', onTouchStart);
+    renderer.domElement.addEventListener('touchmove', onTouchMove);
+    renderer.domElement.addEventListener('touchend', onTouchEnd);
+    
     window.addEventListener('resize', onWindowResize);
     document.addEventListener('keydown', onKeyDown);
     
@@ -278,6 +284,55 @@ function onMouseUp(event) {
     isRotating = false;
     isDrawing = false;
     updateCursor();
+}
+
+// Touch event handlers for mobile
+function onTouchStart(event) {
+    event.preventDefault();
+    const touch = event.touches[0];
+    
+    if (event.touches.length === 2) {
+        isRotating = true;
+    } else if (currentTool !== 'eyedropper') {
+        isDrawing = true;
+        const mockEvent = { clientX: touch.clientX, clientY: touch.clientY };
+        const uv = getUVFromMouse(mockEvent);
+        drawOnTexture(uv);
+    } else {
+        const mockEvent = { clientX: touch.clientX, clientY: touch.clientY };
+        const uv = getUVFromMouse(mockEvent);
+        drawOnTexture(uv);
+    }
+    
+    lastMouse.x = touch.clientX;
+    lastMouse.y = touch.clientY;
+}
+
+function onTouchMove(event) {
+    event.preventDefault();
+    const touch = event.touches[0];
+    
+    if (isRotating && event.touches.length === 2) {
+        const deltaX = touch.clientX - lastMouse.x;
+        const deltaY = touch.clientY - lastMouse.y;
+        
+        globe.rotation.y += deltaX * 0.01;
+        globe.rotation.x += deltaY * 0.01;
+        
+        updateRotationInfo();
+    } else if (isDrawing && currentTool !== 'fill') {
+        const mockEvent = { clientX: touch.clientX, clientY: touch.clientY };
+        const uv = getUVFromMouse(mockEvent);
+        drawOnTexture(uv);
+    }
+    
+    lastMouse.x = touch.clientX;
+    lastMouse.y = touch.clientY;
+}
+
+function onTouchEnd(event) {
+    isRotating = false;
+    isDrawing = false;
 }
 
 function onWheel(event) {
