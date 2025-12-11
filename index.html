@@ -5,29 +5,32 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="toolbar">
-        <div class="tool-group">
-            <button class="tool active" data-tool="pencil" title="Pencil (P)">✏️</button>
-            <button class="tool" data-tool="eraser" title="Eraser (E)">🧹</button>
-            <button class="tool" data-tool="fill" title="Fill (F)">🪣</button>
-            <button class="tool" data-tool="eyedropper" title="Eyedropper (I)">💉</button>
-        </div>
-        <div class="color-palette">
-            <input type="color" id="color-picker" value="#00ff00">
-            <div class="preset-colors"></div>
-        </div>
-        <div class="controls">
-            <button id="clear-btn">Clear</button>
-            <button id="grid-toggle">Grid</button>
-            <button id="save-btn">Save</button>
-        </div>
+    <div id="controls">
+        <button id="sort-btn">Start Sorting</button>
+        <button id="shuffle-btn">Shuffle</button>
+        <button id="reset-btn">New Colors</button>
+        <select id="algorithm">
+            <option value="bubble">Bubble Sort</option>
+            <option value="quick">Quick Sort</option>
+        </select>
+        <select id="sort-method">
+            <option value="hue">Sort by Hue</option>
+            <option value="brightness">Sort by Brightness</option>
+            <option value="saturation">Sort by Saturation</option>
+            <option value="red">Sort by Red Channel</option>
+            <option value="green">Sort by Green Channel</option>
+            <option value="blue">Sort by Blue Channel</option>
+        </select>
+        <label>
+            Speed: <input type="range" id="speed-slider" min="1" max="100" value="50">
+        </label>
     </div>
+    <canvas id="canvas"></canvas>
     <div id="info">
-        <div>Tool: <span id="current-tool">pencil</span></div>
-        <div>Color: <span id="current-color" style="color: #00ff00">#00ff00</span></div>
-        <div>Rotation: <span id="rotation-info">0°, 0°</span></div>
+        <span id="status">Ready</span> | 
+        Swaps: <span id="swaps">0</span> | 
+        Comparisons: <span id="comparisons">0</span>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

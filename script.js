@@ -1,432 +1,328 @@
-// Three.js scene setup
-let scene, camera, renderer;
-let globe, globeMaterial;
-let raycaster, mouse;
-let isRotating = false;
-let isDrawing = false;
-let lastMouse = { x: 0, y: 0 };
+// Canvas setup
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-// Texture and drawing
-let textureCanvas, textureCtx;
-let texture;
-const textureSize = 1024;
+// Pixel grid configuration
 const pixelSize = 8;
+const gridWidth = 80;
+const gridHeight = 60;
 
-// Tools and colors
-let currentTool = 'pencil';
-let currentColor = '#00ff00';
-let showGrid = true;
+// Canvas dimensions
+canvas.width = gridWidth * pixelSize;
+canvas.height = gridHeight * pixelSize;
 
-// Color preset palette
-const colorPresets = [
-    '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF',
-    '#FFFF00', '#FF00FF', '#00FFFF', '#FF8800', '#8800FF'
-];
+// Color array
+let pixels = [];
+let originalPixels = [];
 
-// Initialize Three.js scene
-function init() {
-    // Scene
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a0a);
-    
-    // Camera
-    camera = new THREE.PerspectiveCamera(
-        50,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        1000
-    );
-    camera.position.z = 3;
-    
-    // Renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    document.body.appendChild(renderer.domElement);
-    
-    // Create texture canvas
-    textureCanvas = document.createElement('canvas');
-    textureCanvas.width = textureSize;
-    textureCanvas.height = textureSize;
-    textureCtx = textureCanvas.getContext('2d');
-    
-    // Initialize texture with dark background
-    textureCtx.fillStyle = '#1a1a1a';
-    textureCtx.fillRect(0, 0, textureSize, textureSize);
-    
-    // Create texture from canvas
-    texture = new THREE.CanvasTexture(textureCanvas);
-    texture.needsUpdate = true;
-    
-    // Create globe
-    const geometry = new THREE.SphereGeometry(1, 64, 64);
-    globeMaterial = new THREE.MeshPhongMaterial({
-        map: texture,
-        shininess: 10,
-        specular: new THREE.Color(0x222222)
-    });
-    globe = new THREE.Mesh(geometry, globeMaterial);
-    scene.add(globe);
-    
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 3, 5);
-    scene.add(directionalLight);
-    
-    // Raycaster for interaction
-    raycaster = new THREE.Raycaster();
-    mouse = new THREE.Vector2();
-    
-    // Setup UI
-    setupUI();
-    
-    // Event listeners
-    renderer.domElement.addEventListener('mousedown', onMouseDown);
-    renderer.domElement.addEventListener('mousemove', onMouseMove);
-    renderer.domElement.addEventListener('mouseup', onMouseUp);
-    renderer.domElement.addEventListener('wheel', onWheel);
-    
-    // Touch events for mobile
-    renderer.domElement.addEventListener('touchstart', onTouchStart);
-    renderer.domElement.addEventListener('touchmove', onTouchMove);
-    renderer.domElement.addEventListener('touchend', onTouchEnd);
-    
-    window.addEventListener('resize', onWindowResize);
-    document.addEventListener('keydown', onKeyDown);
-    
-    // Draw initial grid
-    if (showGrid) drawGrid();
-    
-    // Start animation
-    animate();
-}
+// Sorting state
+let sorting = false;
+let sortingGenerator = null;
+let comparisons = 0;
+let swaps = 0;
+let speed = 50;
+let animationId = null;
 
-function setupUI() {
-    // Tool buttons
-    document.querySelectorAll('.tool').forEach(button => {
-        button.addEventListener('click', (e) => {
-            document.querySelectorAll('.tool').forEach(b => b.classList.remove('active'));
-            button.classList.add('active');
-            currentTool = button.dataset.tool;
-            updateCursor();
-            updateInfo();
-        });
-    });
-    
-    // Color picker
-    document.getElementById('color-picker').addEventListener('input', (e) => {
-        currentColor = e.target.value;
-        updateInfo();
-    });
-    
-    // Preset colors
-    const presetContainer = document.querySelector('.preset-colors');
-    colorPresets.forEach(color => {
-        const colorDiv = document.createElement('div');
-        colorDiv.className = 'color-preset';
-        colorDiv.style.backgroundColor = color;
-        colorDiv.addEventListener('click', () => {
-            currentColor = color;
-            document.getElementById('color-picker').value = color;
-            updateInfo();
-        });
-        presetContainer.appendChild(colorDiv);
-    });
-    
-    // Control buttons
-    document.getElementById('clear-btn').addEventListener('click', clearCanvas);
-    document.getElementById('grid-toggle').addEventListener('click', () => {
-        showGrid = !showGrid;
-        document.getElementById('grid-toggle').textContent = showGrid ? 'Grid' : 'No Grid';
-        clearCanvas();
-        if (showGrid) drawGrid();
-    });
-    document.getElementById('save-btn').addEventListener('click', saveArt);
-    
-    updateInfo();
-}
-
-function drawGrid() {
-    textureCtx.strokeStyle = '#333333';
-    textureCtx.lineWidth = 1;
-    
-    // Latitude lines
-    for (let i = 0; i <= 16; i++) {
-        const y = (i / 16) * textureSize;
-        textureCtx.beginPath();
-        textureCtx.moveTo(0, y);
-        textureCtx.lineTo(textureSize, y);
-        textureCtx.stroke();
+// Initialize pixels with random colors
+function initializePixels() {
+    pixels = [];
+    for (let i = 0; i < gridWidth * gridHeight; i++) {
+        // Generate vibrant random colors
+        const hue = Math.random() * 360;
+        const saturation = 50 + Math.random() * 50; // 50-100%
+        const lightness = 30 + Math.random() * 40; // 30-70%
+        pixels.push(hslToRgb(hue, saturation, lightness));
     }
-    
-    // Longitude lines
-    for (let i = 0; i <= 32; i++) {
-        const x = (i / 32) * textureSize;
-        textureCtx.beginPath();
-        textureCtx.moveTo(x, 0);
-        textureCtx.lineTo(x, textureSize);
-        textureCtx.stroke();
-    }
-    
-    texture.needsUpdate = true;
+    originalPixels = [...pixels];
 }
 
-function getUVFromMouse(event) {
-    const rect = renderer.domElement.getBoundingClientRect();
-    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+// Convert HSL to RGB
+function hslToRgb(h, s, l) {
+    h /= 360;
+    s /= 100;
+    l /= 100;
     
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObject(globe);
+    let r, g, b;
     
-    if (intersects.length > 0) {
-        return intersects[0].uv;
-    }
-    return null;
-}
-
-function drawOnTexture(uv) {
-    if (!uv) return;
-    
-    const x = Math.floor(uv.x * textureSize);
-    const y = Math.floor((1 - uv.y) * textureSize);
-    
-    textureCtx.save();
-    
-    switch (currentTool) {
-        case 'pencil':
-            textureCtx.fillStyle = currentColor;
-            textureCtx.fillRect(
-                x - pixelSize/2, 
-                y - pixelSize/2, 
-                pixelSize, 
-                pixelSize
-            );
-            break;
-            
-        case 'eraser':
-            textureCtx.globalCompositeOperation = 'destination-out';
-            textureCtx.fillRect(
-                x - pixelSize/2, 
-                y - pixelSize/2, 
-                pixelSize, 
-                pixelSize
-            );
-            break;
-            
-        case 'fill':
-            // Simple fill - fills a larger area
-            textureCtx.fillStyle = currentColor;
-            textureCtx.fillRect(
-                x - pixelSize*2, 
-                y - pixelSize*2, 
-                pixelSize*4, 
-                pixelSize*4
-            );
-            break;
-            
-        case 'eyedropper':
-            const imageData = textureCtx.getImageData(x, y, 1, 1);
-            const pixel = imageData.data;
-            const hex = '#' + 
-                ('0' + pixel[0].toString(16)).slice(-2) +
-                ('0' + pixel[1].toString(16)).slice(-2) +
-                ('0' + pixel[2].toString(16)).slice(-2);
-            currentColor = hex;
-            document.getElementById('color-picker').value = hex;
-            updateInfo();
-            break;
-    }
-    
-    textureCtx.restore();
-    texture.needsUpdate = true;
-}
-
-function onMouseDown(event) {
-    if (event.shiftKey || event.button === 2) {
-        isRotating = true;
-        updateCursor();
-    } else if (currentTool !== 'eyedropper') {
-        isDrawing = true;
-        const uv = getUVFromMouse(event);
-        drawOnTexture(uv);
+    if (s === 0) {
+        r = g = b = l;
     } else {
-        const uv = getUVFromMouse(event);
-        drawOnTexture(uv);
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        };
+        
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
     }
     
-    lastMouse.x = event.clientX;
-    lastMouse.y = event.clientY;
+    return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+    };
 }
 
-function onMouseMove(event) {
-    if (isRotating) {
-        const deltaX = event.clientX - lastMouse.x;
-        const deltaY = event.clientY - lastMouse.y;
-        
-        globe.rotation.y += deltaX * 0.01;
-        globe.rotation.x += deltaY * 0.01;
-        
-        updateRotationInfo();
-    } else if (isDrawing && currentTool !== 'fill') {
-        const uv = getUVFromMouse(event);
-        drawOnTexture(uv);
+// Get color value based on sorting method
+function getColorValue(color, method) {
+    switch (method) {
+        case 'hue':
+            return rgbToHsl(color.r, color.g, color.b).h;
+        case 'brightness':
+            return (color.r + color.g + color.b) / 3;
+        case 'saturation':
+            return rgbToHsl(color.r, color.g, color.b).s;
+        case 'red':
+            return color.r;
+        case 'green':
+            return color.g;
+        case 'blue':
+            return color.b;
+        default:
+            return 0;
     }
-    
-    lastMouse.x = event.clientX;
-    lastMouse.y = event.clientY;
 }
 
-function onMouseUp(event) {
-    isRotating = false;
-    isDrawing = false;
-    updateCursor();
-}
-
-// Touch event handlers for mobile
-function onTouchStart(event) {
-    event.preventDefault();
-    const touch = event.touches[0];
+// Convert RGB to HSL
+function rgbToHsl(r, g, b) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
     
-    if (event.touches.length === 2) {
-        isRotating = true;
-    } else if (currentTool !== 'eyedropper') {
-        isDrawing = true;
-        const mockEvent = { clientX: touch.clientX, clientY: touch.clientY };
-        const uv = getUVFromMouse(mockEvent);
-        drawOnTexture(uv);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    
+    if (max === min) {
+        h = s = 0;
     } else {
-        const mockEvent = { clientX: touch.clientX, clientY: touch.clientY };
-        const uv = getUVFromMouse(mockEvent);
-        drawOnTexture(uv);
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        
+        switch (max) {
+            case r:
+                h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+                break;
+            case g:
+                h = ((b - r) / d + 2) / 6;
+                break;
+            case b:
+                h = ((r - g) / d + 4) / 6;
+                break;
+        }
     }
     
-    lastMouse.x = touch.clientX;
-    lastMouse.y = touch.clientY;
+    return {
+        h: h * 360,
+        s: s * 100,
+        l: l * 100
+    };
 }
 
-function onTouchMove(event) {
-    event.preventDefault();
-    const touch = event.touches[0];
+// Draw the pixel grid
+function draw() {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    if (isRotating && event.touches.length === 2) {
-        const deltaX = touch.clientX - lastMouse.x;
-        const deltaY = touch.clientY - lastMouse.y;
+    for (let i = 0; i < pixels.length; i++) {
+        const x = (i % gridWidth) * pixelSize;
+        const y = Math.floor(i / gridWidth) * pixelSize;
+        const color = pixels[i];
         
-        globe.rotation.y += deltaX * 0.01;
-        globe.rotation.x += deltaY * 0.01;
-        
-        updateRotationInfo();
-    } else if (isDrawing && currentTool !== 'fill') {
-        const mockEvent = { clientX: touch.clientX, clientY: touch.clientY };
-        const uv = getUVFromMouse(mockEvent);
-        drawOnTexture(uv);
+        ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+        ctx.fillRect(x, y, pixelSize - 1, pixelSize - 1);
     }
+}
+
+// Bubble sort generator with visualization
+function* bubbleSort(method) {
+    const n = pixels.length;
     
-    lastMouse.x = touch.clientX;
-    lastMouse.y = touch.clientY;
-}
-
-function onTouchEnd(event) {
-    isRotating = false;
-    isDrawing = false;
-}
-
-function onWheel(event) {
-    event.preventDefault();
-    camera.position.z += event.deltaY * 0.002;
-    camera.position.z = Math.max(1.5, Math.min(5, camera.position.z));
-}
-
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-function onKeyDown(event) {
-    switch(event.key.toLowerCase()) {
-        case 'p':
-            document.querySelector('[data-tool="pencil"]').click();
-            break;
-        case 'e':
-            document.querySelector('[data-tool="eraser"]').click();
-            break;
-        case 'f':
-            document.querySelector('[data-tool="fill"]').click();
-            break;
-        case 'i':
-            document.querySelector('[data-tool="eyedropper"]').click();
-            break;
-        case 'g':
-            document.getElementById('grid-toggle').click();
-            break;
-        case 's':
-            if (event.ctrlKey || event.metaKey) {
-                event.preventDefault();
-                saveArt();
+    for (let i = 0; i < n - 1; i++) {
+        for (let j = 0; j < n - i - 1; j++) {
+            comparisons++;
+            
+            const val1 = getColorValue(pixels[j], method);
+            const val2 = getColorValue(pixels[j + 1], method);
+            
+            if (val1 > val2) {
+                // Swap
+                [pixels[j], pixels[j + 1]] = [pixels[j + 1], pixels[j]];
+                swaps++;
+                yield { swapped: true, index1: j, index2: j + 1 };
             }
-            break;
+        }
+        
+        // Update progress
+        const progress = Math.floor((i / (n - 1)) * 100);
+        document.getElementById('status').textContent = `Sorting... ${progress}%`;
+    }
+    
+    document.getElementById('status').textContent = 'Sorted!';
+}
+
+// Quick sort generator with visualization
+function* quickSort(method, start = 0, end = pixels.length - 1) {
+    if (start >= end) return;
+    
+    const pivotIndex = yield* partition(method, start, end);
+    yield* quickSort(method, start, pivotIndex - 1);
+    yield* quickSort(method, pivotIndex + 1, end);
+    
+    // Update status when complete
+    if (start === 0 && end === pixels.length - 1) {
+        document.getElementById('status').textContent = 'Sorted!';
     }
 }
 
-function clearCanvas() {
-    if (confirm('Clear the entire canvas?')) {
-        textureCtx.fillStyle = '#1a1a1a';
-        textureCtx.fillRect(0, 0, textureSize, textureSize);
-        if (showGrid) drawGrid();
-        texture.needsUpdate = true;
+function* partition(method, start, end) {
+    const pivotValue = getColorValue(pixels[end], method);
+    let i = start - 1;
+    
+    for (let j = start; j < end; j++) {
+        comparisons++;
+        if (getColorValue(pixels[j], method) < pivotValue) {
+            i++;
+            if (i !== j) {
+                [pixels[i], pixels[j]] = [pixels[j], pixels[i]];
+                swaps++;
+                yield { swapped: true, index1: i, index2: j };
+            }
+        }
     }
+    
+    i++;
+    if (i !== end) {
+        [pixels[i], pixels[end]] = [pixels[end], pixels[i]];
+        swaps++;
+        yield { swapped: true, index1: i, index2: end };
+    }
+    
+    return i;
 }
 
-function saveArt() {
-    textureCanvas.toBlob(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'globe-art.png';
-        a.click();
-        URL.revokeObjectURL(url);
-    });
+// Animation loop for sorting
+async function animateSort() {
+    const animate = async () => {
+        if (!sorting || !sortingGenerator) return;
+        
+        const result = sortingGenerator.next();
+        
+        if (result.done) {
+            stopSorting();
+            return;
+        }
+        
+        draw();
+        updateInfo();
+        
+        // Speed control
+        const delay = 101 - speed;
+        animationId = setTimeout(() => {
+            animateSort();
+        }, delay);
+    };
+    
+    await animate();
 }
 
+// Stop sorting
+function stopSorting() {
+    sorting = false;
+    sortingGenerator = null;
+    if (animationId) {
+        clearTimeout(animationId);
+        animationId = null;
+    }
+    document.getElementById('sort-btn').textContent = 'Start Sorting';
+    document.getElementById('sort-btn').classList.remove('active');
+    document.getElementById('shuffle-btn').disabled = false;
+    document.getElementById('reset-btn').disabled = false;
+    document.getElementById('algorithm').disabled = false;
+    document.getElementById('sort-method').disabled = false;
+}
+
+// Update info display
 function updateInfo() {
-    document.getElementById('current-tool').textContent = currentTool;
-    document.getElementById('current-color').textContent = currentColor;
-    document.getElementById('current-color').style.color = currentColor;
+    document.getElementById('swaps').textContent = swaps;
+    document.getElementById('comparisons').textContent = comparisons;
 }
 
-function updateRotationInfo() {
-    const rotX = Math.round(globe.rotation.x * 180 / Math.PI);
-    const rotY = Math.round(globe.rotation.y * 180 / Math.PI);
-    document.getElementById('rotation-info').textContent = `${rotX}°, ${rotY}°`;
-}
-
-function updateCursor() {
-    if (isRotating) {
-        renderer.domElement.className = 'cursor-rotating';
+// Event listeners
+document.getElementById('sort-btn').addEventListener('click', () => {
+    if (sorting) {
+        stopSorting();
+        document.getElementById('status').textContent = 'Paused';
     } else {
-        renderer.domElement.className = `cursor-${currentTool}`;
+        sorting = true;
+        comparisons = 0;
+        swaps = 0;
+        
+        const method = document.getElementById('sort-method').value;
+        const algorithm = document.getElementById('algorithm').value;
+        
+        if (algorithm === 'bubble') {
+            sortingGenerator = bubbleSort(method);
+        } else {
+            sortingGenerator = quickSort(method);
+        }
+        
+        document.getElementById('sort-btn').textContent = 'Pause Sorting';
+        document.getElementById('sort-btn').classList.add('active');
+        document.getElementById('shuffle-btn').disabled = true;
+        document.getElementById('reset-btn').disabled = true;
+        document.getElementById('algorithm').disabled = true;
+        document.getElementById('sort-method').disabled = true;
+        document.getElementById('status').textContent = 'Sorting...';
+        
+        animateSort();
     }
-}
+});
 
-function animate() {
-    requestAnimationFrame(animate);
+document.getElementById('shuffle-btn').addEventListener('click', () => {
+    stopSorting();
     
-    // Auto-rotate when not interacting
-    if (!isRotating && !isDrawing) {
-        globe.rotation.y += 0.001;
-        updateRotationInfo();
+    // Fisher-Yates shuffle
+    for (let i = pixels.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pixels[i], pixels[j]] = [pixels[j], pixels[i]];
     }
     
-    renderer.render(scene, camera);
-}
+    comparisons = 0;
+    swaps = 0;
+    document.getElementById('status').textContent = 'Shuffled';
+    updateInfo();
+    draw();
+});
 
-// Context menu prevention
-document.addEventListener('contextmenu', (e) => e.preventDefault());
+document.getElementById('reset-btn').addEventListener('click', () => {
+    stopSorting();
+    initializePixels();
+    comparisons = 0;
+    swaps = 0;
+    document.getElementById('status').textContent = 'New colors generated';
+    updateInfo();
+    draw();
+});
 
-// Start the application
-init();
+document.getElementById('speed-slider').addEventListener('input', (e) => {
+    speed = parseInt(e.target.value);
+});
+
+// Initialize and draw
+initializePixels();
+draw();
+updateInfo();
+
+// Reload with new colors on page refresh
+window.addEventListener('load', () => {
+    initializePixels();
+    draw();
+});
