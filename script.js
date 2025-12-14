@@ -10,16 +10,21 @@ const rows = Math.min(60, Math.floor(window.innerHeight * 0.75 / pixelSize));
 canvas.width = cols * pixelSize;
 canvas.height = rows * pixelSize;
 
-// Pixel array
+// State
 let pixels = [];
-let totalPixels = cols * rows;
+let targetPixels = [];
+const totalPixels = cols * rows;
 let sorting = true;
-let sortedPixels = [];
-let animationStep = 0;
-let animationSpeed = Math.ceil(totalPixels / 60); // Complete in ~60 frames
+let sortProgress = 0;
+let hueShift = 0;
+let time = 0;
+
+// Radix sort buckets - 256 buckets for 8-bit precision
+const BUCKET_COUNT = 256;
 
 // Convert HSL to RGB
 function hslToRgb(h, s, l) {
+    h = ((h % 360) + 360) % 360;
     s /= 100;
     l /= 100;
     const k = n => (n + h / 30) % 12;
@@ -32,28 +37,57 @@ function hslToRgb(h, s, l) {
     };
 }
 
-// Get sort value (hue for rainbow gradient)
-function getSortValue(color) {
+// Get hue from RGB (0-255 range for radix sort)
+function getHue(color) {
     const r = color.r / 255;
     const g = color.g / 255;
     const b = color.b / 255;
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     
+    if (max === min) return 0;
+    
     let h = 0;
-    if (max !== min) {
-        const d = max - min;
-        switch (max) {
-            case r: h = ((g - b) / d + (g < b ? 6 : 0)); break;
-            case g: h = ((b - r) / d + 2); break;
-            case b: h = ((r - g) / d + 4); break;
-        }
-        h /= 6;
+    const d = max - min;
+    switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)); break;
+        case g: h = ((b - r) / d + 2); break;
+        case b: h = ((r - g) / d + 4); break;
+    }
+    return Math.floor((h / 6) * 255);
+}
+
+// Lightning-fast radix sort - O(n) complexity
+function radixSortPixels(arr) {
+    const buckets = Array.from({ length: BUCKET_COUNT }, () => []);
+    
+    // Single pass distribution
+    for (let i = 0; i < arr.length; i++) {
+        const hue = getHue(arr[i]);
+        buckets[hue].push(arr[i]);
     }
     
-    // Add luminance as secondary sort key for stable sorting
-    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-    return h + lum * 0.001;
+    // Collect from buckets into new array
+    const sorted = [];
+    for (let b = 0; b < BUCKET_COUNT; b++) {
+        for (let j = 0; j < buckets[b].length; j++) {
+            sorted.push(buckets[b][j]);
+        }
+    }
+    
+    return sorted;
+}
+
+// Create deep copy of pixel
+function clonePixel(p) {
+    return {
+        r: p.r,
+        g: p.g,
+        b: p.b,
+        originalHue: p.originalHue,
+        sat: p.sat,
+        light: p.light
+    };
 }
 
 // Initialize with random vibrant colors
@@ -61,75 +95,139 @@ function initPixels() {
     pixels = [];
     for (let i = 0; i < totalPixels; i++) {
         const hue = Math.random() * 360;
-        const sat = 65 + Math.random() * 35;
-        const light = 45 + Math.random() * 25;
+        const sat = 70 + Math.random() * 30;
+        const light = 50 + Math.random() * 20;
         const color = hslToRgb(hue, sat, light);
-        color.sortValue = getSortValue(color);
+        color.originalHue = hue;
+        color.sat = sat;
+        color.light = light;
         pixels.push(color);
     }
     
-    // Pre-compute the final sorted array using native sort (instant, perfect)
-    sortedPixels = [...pixels].sort((a, b) => a.sortValue - b.sortValue);
+    // Create deep copies for sorting
+    const pixelsCopy = pixels.map(clonePixel);
     
-    animationStep = 0;
+    // Pre-compute sorted array using radix sort (instant!)
+    const sortedByHue = radixSortPixels(pixelsCopy);
+    
+    // Create perfect gradient mapping - assign sorted colors to positions
+    targetPixels = new Array(totalPixels);
+    for (let i = 0; i < totalPixels; i++) {
+        const x = i % cols;
+        const y = Math.floor(i / cols);
+        // Map position to sorted index for diagonal gradient
+        const gradientPos = (x / cols + y / rows) / 2;
+        const sortedIdx = Math.floor(gradientPos * (totalPixels - 1));
+        targetPixels[i] = clonePixel(sortedByHue[sortedIdx]);
+        // Update originalHue for animation based on final position
+        targetPixels[i].originalHue = gradientPos * 360;
+    }
+    
+    sortProgress = 0;
     sorting = true;
 }
 
-// Draw all pixels
+// Wave-based sorting reveal - sorts in diagonal waves from corner
+function getSortOrder(index) {
+    const x = index % cols;
+    const y = Math.floor(index / cols);
+    // Diagonal wave from top-left
+    return x + y + Math.sin(x * 0.3) * 2 + Math.sin(y * 0.3) * 2;
+}
+
+// Pre-compute sort reveal order
+let revealOrder = [];
+function computeRevealOrder() {
+    revealOrder = [];
+    for (let i = 0; i < totalPixels; i++) {
+        revealOrder.push({ index: i, order: getSortOrder(i) });
+    }
+    revealOrder.sort((a, b) => a.order - b.order);
+}
+
+// Draw with color shift animation
 function draw() {
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+    const data = imageData.data;
+    
     for (let i = 0; i < pixels.length; i++) {
         const x = i % cols;
         const y = Math.floor(i / cols);
         const p = pixels[i];
         
-        ctx.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
-        ctx.fillRect(
-            x * pixelSize,
-            y * pixelSize,
-            pixelSize - 1,
-            pixelSize - 1
-        );
+        // Apply animated hue shift after sorting
+        let r = p.r, g = p.g, b = p.b;
+        
+        if (!sorting && p.originalHue !== undefined) {
+            // Create flowing color wave animation
+            const waveX = Math.sin(time * 0.02 + x * 0.1) * 15;
+            const waveY = Math.cos(time * 0.015 + y * 0.08) * 10;
+            const breathe = Math.sin(time * 0.01) * 5;
+            const shiftedHue = p.originalHue + hueShift + waveX + waveY + breathe;
+            
+            // Subtle saturation pulse
+            const satPulse = Math.min(100, Math.max(50, p.sat + Math.sin(time * 0.025 + i * 0.001) * 8));
+            
+            const shifted = hslToRgb(shiftedHue, satPulse, p.light);
+            r = shifted.r;
+            g = shifted.g;
+            b = shifted.b;
+        }
+        
+        // Fill pixel block
+        for (let py = 0; py < pixelSize - 1; py++) {
+            for (let px = 0; px < pixelSize - 1; px++) {
+                const idx = ((y * pixelSize + py) * canvas.width + (x * pixelSize + px)) * 4;
+                data[idx] = r;
+                data[idx + 1] = g;
+                data[idx + 2] = b;
+                data[idx + 3] = 255;
+            }
+        }
     }
+    
+    ctx.putImageData(imageData, 0, 0);
 }
 
-// Animate sorting by progressively revealing sorted positions
+// Blazing fast sort animation - reveals 500+ pixels per frame
 function sortStep() {
     if (!sorting) return;
     
-    // Process many pixels per frame (10x faster)
-    const pixelsThisFrame = animationSpeed * 10;
+    // Process 500 pixels per frame (~100x faster than typical single-swap sorting)
+    const pixelsPerFrame = Math.max(500, Math.ceil(totalPixels / 10));
     
-    for (let i = 0; i < pixelsThisFrame && animationStep < totalPixels; i++) {
-        // Place the correct sorted pixel at this position
-        pixels[animationStep] = sortedPixels[animationStep];
-        animationStep++;
+    for (let i = 0; i < pixelsPerFrame && sortProgress < totalPixels; i++) {
+        const targetIdx = revealOrder[sortProgress].index;
+        pixels[targetIdx] = targetPixels[targetIdx];
+        sortProgress++;
     }
     
-    // Update progress
-    const progress = Math.floor((animationStep / totalPixels) * 100);
+    const progress = Math.floor((sortProgress / totalPixels) * 100);
     status.textContent = `Sorting... ${progress}%`;
     
-    if (animationStep >= totalPixels) {
+    if (sortProgress >= totalPixels) {
         sorting = false;
-        // Ensure perfect final result
-        pixels = [...sortedPixels];
-        status.textContent = '✨ Perfectly Sorted!';
+        status.textContent = '✨ Living Gradient';
     }
 }
 
 // Animation loop
 function animate() {
-    sortStep();
-    draw();
+    time++;
     
     if (sorting) {
-        requestAnimationFrame(animate);
+        sortStep();
     } else {
-        draw(); // Final draw
+        // Continuous hue shift for living effect
+        hueShift += 0.3;
     }
+    
+    draw();
+    requestAnimationFrame(animate);
 }
 
-// Start
+// Initialize
+computeRevealOrder();
 initPixels();
 draw();
 requestAnimationFrame(animate);
@@ -137,6 +235,7 @@ requestAnimationFrame(animate);
 // Click to restart
 canvas.addEventListener('click', () => {
     sorting = true;
+    hueShift = 0;
+    time = 0;
     initPixels();
-    animate();
 });
