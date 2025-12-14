@@ -2,6 +2,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const output = document.getElementById('output');
 const command = document.getElementById('command');
+const glitchOverlay = document.getElementById('glitch-overlay');
 
 // Configuration
 const pixelSize = 6;
@@ -15,30 +16,43 @@ canvas.height = rows * pixelSize;
 let pixels = [];
 let targetPixels = [];
 const totalPixels = cols * rows;
-let sorting = false;
-let sortProgress = 0;
-let hueShift = 0;
+let corrupting = false;
+let corruptionProgress = 0;
 let time = 0;
-let startTime = 0;
-let sortTime = 0;
+let cycles = 0;
 let terminalReady = false;
+let cxPattern = [];
+let glitchIntensity = 0;
 
-const BUCKET_COUNT = 256;
+// Generate CX pattern positions
+function generateCxPattern() {
+    cxPattern = [];
+    for (let i = 0; i < 140; i++) {
+        cxPattern.push({
+            x: Math.random() * cols,
+            y: Math.random() * rows,
+            phase: Math.random() * Math.PI * 2,
+            speed: 0.5 + Math.random() * 2,
+            size: 1 + Math.random() * 3
+        });
+    }
+}
 
 // Terminal typing
 const terminalLines = [
-    { text: '# PIXELSORT.IO — Enterprise Pixel Sorting', class: 'comment', delay: 0 },
+    { text: '# ;cx;cx;cx — CORRUPTION DETECTED', class: 'corrupt', delay: 0 },
     { text: '', delay: 200 },
-    { text: '> Initializing radix sort engine...', class: 'info', delay: 400 },
-    { text: '> Loading 5,000 pixel array...', class: 'info', delay: 800 },
-    { text: '✓ Engine ready', class: 'success', delay: 1200 },
-    { text: '', delay: 1400 },
-    { text: '# Why choose PixelSort Pro?', class: 'comment', delay: 1600 },
-    { text: '  → O(n) linear time complexity', class: 'highlight', delay: 1900 },
-    { text: '  → 100x faster than bubble sort', class: 'highlight', delay: 2200 },
-    { text: '  → Zero dependencies, pure JS', class: 'highlight', delay: 2500 },
-    { text: '', delay: 2700 },
-    { text: '> Running live demo...', class: 'warning', delay: 2900 },
+    { text: '> Buffer overflow in sector 0x3F...', class: 'warning', delay: 400 },
+    { text: '> ;cx;cx;cx;cx;cx;cx;cx;cx;cx', class: 'corrupt', delay: 600 },
+    { text: '✗ Memory integrity: COMPROMISED', class: 'info', delay: 900 },
+    { text: '', delay: 1100 },
+    { text: '# Pattern analysis:', class: 'comment', delay: 1300 },
+    { text: '  → Repetition count: 140', class: 'highlight', delay: 1500 },
+    { text: '  → Pattern: ;cx (semicolon-cx)', class: 'highlight', delay: 1800 },
+    { text: '  → Entropy level: MAXIMUM', class: 'highlight', delay: 2100 },
+    { text: '', delay: 2300 },
+    { text: '> Initiating corruption cascade...', class: 'warning', delay: 2500 },
+    { text: '> ;cx;cx;cx;cx;cx;cx;cx;cx;cx;cx;cx;cx', class: 'corrupt', delay: 2700 },
 ];
 
 let lineIndex = 0;
@@ -46,7 +60,7 @@ let lineIndex = 0;
 function typeTerminal() {
     if (lineIndex >= terminalLines.length) {
         terminalReady = true;
-        setTimeout(startSort, 500);
+        setTimeout(startCorruption, 500);
         return;
     }
     
@@ -64,15 +78,15 @@ function typeTerminal() {
     }, delayDiff);
 }
 
-// CLI command typing
-const commandText = 'pixelsort --algorithm=radix --hue --animate';
+// CLI command typing - corrupted version
+const commandText = ';cx;cx;cx;cx;cx;cx;cx;cx;cx;cx;cx;cx';
 let cmdIndex = 0;
 
 function typeCommand() {
     if (cmdIndex < commandText.length) {
         command.textContent += commandText[cmdIndex];
         cmdIndex++;
-        setTimeout(typeCommand, 30 + Math.random() * 50);
+        setTimeout(typeCommand, 20 + Math.random() * 30);
     }
 }
 
@@ -81,7 +95,7 @@ function resetCommand() {
     cmdIndex = 0;
 }
 
-// Convert HSL to RGB
+// Color functions
 function hslToRgb(h, s, l) {
     h = ((h % 360) + 360) % 360;
     s /= 100;
@@ -96,69 +110,53 @@ function hslToRgb(h, s, l) {
     };
 }
 
-function getHue(color) {
-    const r = color.r / 255;
-    const g = color.g / 255;
-    const b = color.b / 255;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    if (max === min) return 0;
-    let h = 0;
-    const d = max - min;
-    switch (max) {
-        case r: h = ((g - b) / d + (g < b ? 6 : 0)); break;
-        case g: h = ((b - r) / d + 2); break;
-        case b: h = ((r - g) / d + 4); break;
-    }
-    return Math.floor((h / 6) * 255);
-}
-
-function radixSortPixels(arr) {
-    const buckets = Array.from({ length: BUCKET_COUNT }, () => []);
-    for (let i = 0; i < arr.length; i++) {
-        const hue = getHue(arr[i]);
-        buckets[hue].push(arr[i]);
-    }
-    const sorted = [];
-    for (let b = 0; b < BUCKET_COUNT; b++) {
-        for (let j = 0; j < buckets[b].length; j++) {
-            sorted.push(buckets[b][j]);
-        }
-    }
-    return sorted;
-}
-
 function clonePixel(p) {
-    return { r: p.r, g: p.g, b: p.b, originalHue: p.originalHue, sat: p.sat, light: p.light };
+    return { r: p.r, g: p.g, b: p.b, originalHue: p.originalHue, sat: p.sat, light: p.light, corrupted: p.corrupted };
 }
 
 function initPixels() {
     pixels = [];
     for (let i = 0; i < totalPixels; i++) {
-        const hue = Math.random() * 360;
-        const sat = 70 + Math.random() * 30;
-        const light = 45 + Math.random() * 25;
+        const x = i % cols;
+        const y = Math.floor(i / cols);
+        
+        // Create diagonal gradient with red tones
+        const diag = (x + y) / (cols + rows);
+        const hue = 0 + diag * 30; // Red to orange gradient
+        const sat = 60 + Math.random() * 40;
+        const light = 20 + diag * 30 + Math.random() * 15;
+        
         const color = hslToRgb(hue, sat, light);
         color.originalHue = hue;
         color.sat = sat;
         color.light = light;
+        color.corrupted = false;
         pixels.push(color);
     }
     
-    const pixelsCopy = pixels.map(clonePixel);
-    const sortedByHue = radixSortPixels(pixelsCopy);
-    
-    targetPixels = new Array(totalPixels);
-    for (let i = 0; i < totalPixels; i++) {
+    // Create target corrupted state
+    targetPixels = pixels.map((p, i) => {
         const x = i % cols;
         const y = Math.floor(i / cols);
-        const gradientPos = (x / cols + y / rows) / 2;
-        const sortedIdx = Math.floor(gradientPos * (totalPixels - 1));
-        targetPixels[i] = clonePixel(sortedByHue[sortedIdx]);
-        targetPixels[i].originalHue = gradientPos * 360;
-    }
+        const cx = clonePixel(p);
+        
+        // Corruption creates cyan/magenta interference pattern
+        const wave = Math.sin(x * 0.2) * Math.cos(y * 0.15);
+        if (wave > 0.3) {
+            cx.r = 0;
+            cx.g = 255;
+            cx.b = 255;
+            cx.corrupted = true;
+        } else if (wave < -0.3) {
+            cx.r = 255;
+            cx.g = 0;
+            cx.b = 255;
+            cx.corrupted = true;
+        }
+        return cx;
+    });
     
-    sortProgress = 0;
+    corruptionProgress = 0;
 }
 
 let revealOrder = [];
@@ -168,7 +166,11 @@ function computeRevealOrder() {
     for (let i = 0; i < totalPixels; i++) {
         const x = i % cols;
         const y = Math.floor(i / cols);
-        revealOrder.push({ index: i, order: x + y + Math.sin(x * 0.3) * 2 });
+        // Diagonal wave corruption spread
+        revealOrder.push({ 
+            index: i, 
+            order: (x + y) + Math.sin(x * 0.3 + y * 0.2) * 5 + Math.random() * 3
+        });
     }
     revealOrder.sort((a, b) => a.order - b.order);
 }
@@ -184,14 +186,42 @@ function draw() {
         
         let r = p.r, g = p.g, b = p.b;
         
-        if (!sorting && p.originalHue !== undefined) {
-            const waveX = Math.sin(time * 0.02 + x * 0.1) * 15;
-            const waveY = Math.cos(time * 0.015 + y * 0.08) * 10;
-            const shiftedHue = p.originalHue + hueShift + waveX + waveY;
-            const shifted = hslToRgb(shiftedHue, p.sat, p.light);
-            r = shifted.r;
-            g = shifted.g;
-            b = shifted.b;
+        // Apply CX pattern interference
+        for (const cx of cxPattern) {
+            const dx = x - cx.x;
+            const dy = y - cx.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const wave = Math.sin(dist * 0.5 - time * 0.05 * cx.speed + cx.phase);
+            
+            if (dist < cx.size * 3 && wave > 0.7) {
+                // Cyan/magenta glitch
+                const intensity = (1 - dist / (cx.size * 3)) * glitchIntensity;
+                if (Math.random() > 0.5) {
+                    r = Math.min(255, r + 100 * intensity);
+                    g = Math.max(0, g - 50 * intensity);
+                    b = Math.min(255, b + 150 * intensity);
+                } else {
+                    r = Math.max(0, r - 50 * intensity);
+                    g = Math.min(255, g + 150 * intensity);
+                    b = Math.min(255, b + 150 * intensity);
+                }
+            }
+        }
+        
+        // Scanline effect
+        if (y % 3 === 0 && !corrupting) {
+            r = Math.floor(r * 0.9);
+            g = Math.floor(g * 0.9);
+            b = Math.floor(b * 0.9);
+        }
+        
+        // Horizontal glitch bands
+        if (Math.random() < 0.002 * glitchIntensity) {
+            const shift = Math.floor(Math.random() * 10 - 5);
+            // This would shift the row, simplified here as color inversion
+            r = 255 - r;
+            g = 255 - g;
+            b = 255 - b;
         }
         
         for (let py = 0; py < pixelSize - 1; py++) {
@@ -207,28 +237,37 @@ function draw() {
     ctx.putImageData(imageData, 0, 0);
 }
 
-function sortStep() {
-    if (!sorting) return;
+function corruptStep() {
+    if (!corrupting) return;
     
-    const pixelsPerFrame = 400;
+    const pixelsPerFrame = 300;
     
-    for (let i = 0; i < pixelsPerFrame && sortProgress < totalPixels; i++) {
-        const targetIdx = revealOrder[sortProgress].index;
+    for (let i = 0; i < pixelsPerFrame && corruptionProgress < totalPixels; i++) {
+        const targetIdx = revealOrder[corruptionProgress].index;
         pixels[targetIdx] = targetPixels[targetIdx];
-        sortProgress++;
+        corruptionProgress++;
     }
     
-    if (sortProgress >= totalPixels) {
-        sorting = false;
-        sortTime = performance.now() - startTime;
-        document.getElementById('stat-time').textContent = Math.round(sortTime) + 'ms';
-        document.getElementById('stat-speed').textContent = Math.round(totalPixels / sortTime * 1000);
+    const percent = Math.round((corruptionProgress / totalPixels) * 100);
+    document.getElementById('stat-corruption').textContent = percent + '%';
+    
+    glitchIntensity = percent / 100;
+    
+    if (corruptionProgress >= totalPixels) {
+        corrupting = false;
+        cycles++;
+        document.getElementById('stat-cycles').textContent = cycles;
+        
+        // After corruption, start ambient glitch mode
+        setTimeout(() => {
+            glitchIntensity = 0.3;
+        }, 1000);
     }
 }
 
-function startSort() {
-    sorting = true;
-    startTime = performance.now();
+function startCorruption() {
+    corrupting = true;
+    glitchIntensity = 0.1;
     resetCommand();
     setTimeout(typeCommand, 300);
 }
@@ -236,24 +275,57 @@ function startSort() {
 function restartDemo() {
     if (!terminalReady) return;
     
-    sorting = true;
-    hueShift = 0;
+    corrupting = true;
     time = 0;
-    startTime = performance.now();
+    glitchIntensity = 0.1;
     initPixels();
+    computeRevealOrder();
+    generateCxPattern();
     resetCommand();
     setTimeout(typeCommand, 300);
+}
+
+function updateGlitchOverlay() {
+    if (Math.random() < 0.02 * glitchIntensity) {
+        const height = Math.random() * 20 + 5;
+        const top = Math.random() * 100;
+        const hue = Math.random() > 0.5 ? 180 : 300; // Cyan or magenta
+        glitchOverlay.style.background = `linear-gradient(transparent ${top}%, hsla(${hue}, 100%, 50%, 0.1) ${top}%, hsla(${hue}, 100%, 50%, 0.1) ${top + height}%, transparent ${top + height}%)`;
+        
+        setTimeout(() => {
+            glitchOverlay.style.background = 'transparent';
+        }, 50);
+    }
+}
+
+function updateEntropy() {
+    const symbols = ['∞', '∿', '≋', '≈', '∾', '⌇', '⌁', '⍾'];
+    if (Math.random() < 0.1) {
+        document.getElementById('stat-entropy').textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    }
 }
 
 function animate() {
     time++;
     
-    if (sorting) {
-        sortStep();
-    } else {
-        hueShift += 0.3;
+    // Move CX patterns
+    for (const cx of cxPattern) {
+        cx.x += Math.sin(time * 0.01 + cx.phase) * 0.1;
+        cx.y += Math.cos(time * 0.01 + cx.phase) * 0.1;
+        
+        // Wrap around
+        if (cx.x < 0) cx.x = cols;
+        if (cx.x > cols) cx.x = 0;
+        if (cx.y < 0) cx.y = rows;
+        if (cx.y > rows) cx.y = 0;
     }
     
+    if (corrupting) {
+        corruptStep();
+    }
+    
+    updateGlitchOverlay();
+    updateEntropy();
     draw();
     requestAnimationFrame(animate);
 }
@@ -261,23 +333,12 @@ function animate() {
 // Event listeners
 canvas.addEventListener('click', restartDemo);
 
-document.getElementById('cta-button').addEventListener('click', (e) => {
-    // Copy command to clipboard
-    const installCmd = 'npm install pixelsort-pro';
-    navigator.clipboard.writeText(installCmd).then(() => {
-        const btn = e.target;
-        const originalText = btn.textContent;
-        btn.textContent = '✓ Copied to clipboard!';
-        setTimeout(() => {
-            btn.textContent = originalText;
-        }, 2000);
-    }).catch(() => {
-        // Fallback: restart demo if clipboard fails
-        restartDemo();
-    });
+document.getElementById('cta-button').addEventListener('click', () => {
+    restartDemo();
 });
 
 // Initialize
+generateCxPattern();
 computeRevealOrder();
 initPixels();
 draw();
