@@ -1,13 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Agent Render</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelSort.io — Lightning Fast Pixel Sorting</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <canvas id="canvas"></canvas>
-    <div id="info">
-        <span id="status">Sorting...</span>
+    <div id="terminal">
+        <div id="terminal-header">
+            <div class="terminal-buttons">
+                <span class="btn-close"></span>
+                <span class="btn-minimize"></span>
+                <span class="btn-maximize"></span>
+            </div>
+            <span class="terminal-title">pixelsort.io — bash</span>
+        </div>
+        <div id="terminal-body">
+            <div id="output"></div>
+            <div id="canvas-container">
+                <canvas id="canvas"></canvas>
+            </div>
+            <div id="cli">
+                <span class="prompt">$</span>
+                <span id="command"></span>
+                <span class="cursor">█</span>
+            </div>
+        </div>
+    </div>
+    <div id="cta-section">
+        <div class="stats">
+            <div class="stat">
+                <span class="stat-value" id="stat-speed">0</span>
+                <span class="stat-label">pixels/ms</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="stat-complexity">O(n)</span>
+                <span class="stat-label">complexity</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="stat-time">0ms</span>
+                <span class="stat-label">sort time</span>
+            </div>
+        </div>
+        <button id="cta-button">$ npm install pixelsort-pro</button>
+        <p class="subtext">Lightning-fast radix sorting for creative coders • Click canvas to replay demo</p>
     </div>
     <script src="script.js"></script>
 </body>
