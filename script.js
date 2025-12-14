@@ -1,328 +1,165 @@
-// Canvas setup
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const status = document.getElementById('status');
 
-// Pixel grid configuration
+// Configuration - smaller grid for smoother sorting
 const pixelSize = 8;
-const gridWidth = 80;
-const gridHeight = 60;
+const cols = Math.min(80, Math.floor(window.innerWidth * 0.85 / pixelSize));
+const rows = Math.min(60, Math.floor(window.innerHeight * 0.75 / pixelSize));
 
-// Canvas dimensions
-canvas.width = gridWidth * pixelSize;
-canvas.height = gridHeight * pixelSize;
+canvas.width = cols * pixelSize;
+canvas.height = rows * pixelSize;
 
-// Color array
+// Pixel array - flat array of colors
 let pixels = [];
-let originalPixels = [];
-
-// Sorting state
-let sorting = false;
-let sortingGenerator = null;
-let comparisons = 0;
-let swaps = 0;
-let speed = 50;
-let animationId = null;
-
-// Initialize pixels with random colors
-function initializePixels() {
-    pixels = [];
-    for (let i = 0; i < gridWidth * gridHeight; i++) {
-        // Generate vibrant random colors
-        const hue = Math.random() * 360;
-        const saturation = 50 + Math.random() * 50; // 50-100%
-        const lightness = 30 + Math.random() * 40; // 30-70%
-        pixels.push(hslToRgb(hue, saturation, lightness));
-    }
-    originalPixels = [...pixels];
-}
+let totalPixels = cols * rows;
+let currentIndex = 0;
+let passComplete = false;
+let sorting = true;
+let swapsThisPass = 0;
 
 // Convert HSL to RGB
 function hslToRgb(h, s, l) {
-    h /= 360;
     s /= 100;
     l /= 100;
-    
-    let r, g, b;
-    
-    if (s === 0) {
-        r = g = b = l;
-    } else {
-        const hue2rgb = (p, q, t) => {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1/6) return p + (q - p) * 6 * t;
-            if (t < 1/2) return q;
-            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-            return p;
-        };
-        
-        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        const p = 2 * l - q;
-        r = hue2rgb(p, q, h + 1/3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1/3);
-    }
-    
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
     return {
-        r: Math.round(r * 255),
-        g: Math.round(g * 255),
-        b: Math.round(b * 255)
+        r: Math.round(255 * f(0)),
+        g: Math.round(255 * f(8)),
+        b: Math.round(255 * f(4))
     };
 }
 
-// Get color value based on sorting method
-function getColorValue(color, method) {
-    switch (method) {
-        case 'hue':
-            return rgbToHsl(color.r, color.g, color.b).h;
-        case 'brightness':
-            return (color.r + color.g + color.b) / 3;
-        case 'saturation':
-            return rgbToHsl(color.r, color.g, color.b).s;
-        case 'red':
-            return color.r;
-        case 'green':
-            return color.g;
-        case 'blue':
-            return color.b;
-        default:
-            return 0;
-    }
-}
-
-// Convert RGB to HSL
-function rgbToHsl(r, g, b) {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    
+// Get sort value (hue + luminance for nice gradient)
+function getSortValue(color) {
+    const r = color.r / 255;
+    const g = color.g / 255;
+    const b = color.b / 255;
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
-    let h, s, l = (max + min) / 2;
     
-    if (max === min) {
-        h = s = 0;
-    } else {
+    let h = 0;
+    if (max !== min) {
         const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        
         switch (max) {
-            case r:
-                h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-                break;
-            case g:
-                h = ((b - r) / d + 2) / 6;
-                break;
-            case b:
-                h = ((r - g) / d + 4) / 6;
-                break;
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)); break;
+            case g: h = ((b - r) / d + 2); break;
+            case b: h = ((r - g) / d + 4); break;
         }
+        h /= 6;
     }
     
-    return {
-        h: h * 360,
-        s: s * 100,
-        l: l * 100
-    };
+    return h;
 }
 
-// Draw the pixel grid
+// Initialize with random vibrant colors
+function initPixels() {
+    pixels = [];
+    for (let i = 0; i < totalPixels; i++) {
+        const hue = Math.random() * 360;
+        const sat = 65 + Math.random() * 35;
+        const light = 45 + Math.random() * 25;
+        pixels.push(hslToRgb(hue, sat, light));
+    }
+    currentIndex = 0;
+    passComplete = false;
+    swapsThisPass = 0;
+}
+
+// Draw all pixels
 function draw() {
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
     for (let i = 0; i < pixels.length; i++) {
-        const x = (i % gridWidth) * pixelSize;
-        const y = Math.floor(i / gridWidth) * pixelSize;
-        const color = pixels[i];
+        const x = i % cols;
+        const y = Math.floor(i / cols);
+        const p = pixels[i];
         
-        ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
-        ctx.fillRect(x, y, pixelSize - 1, pixelSize - 1);
+        ctx.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
+        ctx.fillRect(
+            x * pixelSize,
+            y * pixelSize,
+            pixelSize - 1,
+            pixelSize - 1
+        );
     }
 }
 
-// Bubble sort generator with visualization
-function* bubbleSort(method) {
-    const n = pixels.length;
+// Highlight current comparison
+function highlightCurrent(idx) {
+    const x = idx % cols;
+    const y = Math.floor(idx / cols);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+        x * pixelSize - 1,
+        y * pixelSize - 1,
+        pixelSize + 1,
+        pixelSize + 1
+    );
+}
+
+// Sort step - bubble sort with visualization
+function sortStep() {
+    if (!sorting) return;
     
-    for (let i = 0; i < n - 1; i++) {
-        for (let j = 0; j < n - i - 1; j++) {
-            comparisons++;
-            
-            const val1 = getColorValue(pixels[j], method);
-            const val2 = getColorValue(pixels[j + 1], method);
-            
-            if (val1 > val2) {
-                // Swap
-                [pixels[j], pixels[j + 1]] = [pixels[j + 1], pixels[j]];
-                swaps++;
-                yield { swapped: true, index1: j, index2: j + 1 };
+    // Process multiple comparisons per frame for speed
+    const comparisonsPerFrame = Math.max(10, Math.floor(totalPixels / 100));
+    
+    for (let c = 0; c < comparisonsPerFrame; c++) {
+        if (currentIndex >= totalPixels - 1) {
+            // End of pass
+            if (swapsThisPass === 0) {
+                // No swaps means we're done
+                sorting = false;
+                status.textContent = '✨ Sorted!';
+                return;
             }
+            // Start new pass
+            currentIndex = 0;
+            swapsThisPass = 0;
+            continue;
         }
         
-        // Update progress
-        const progress = Math.floor((i / (n - 1)) * 100);
-        document.getElementById('status').textContent = `Sorting... ${progress}%`;
-    }
-    
-    document.getElementById('status').textContent = 'Sorted!';
-}
-
-// Quick sort generator with visualization
-function* quickSort(method, start = 0, end = pixels.length - 1) {
-    if (start >= end) return;
-    
-    const pivotIndex = yield* partition(method, start, end);
-    yield* quickSort(method, start, pivotIndex - 1);
-    yield* quickSort(method, pivotIndex + 1, end);
-    
-    // Update status when complete
-    if (start === 0 && end === pixels.length - 1) {
-        document.getElementById('status').textContent = 'Sorted!';
-    }
-}
-
-function* partition(method, start, end) {
-    const pivotValue = getColorValue(pixels[end], method);
-    let i = start - 1;
-    
-    for (let j = start; j < end; j++) {
-        comparisons++;
-        if (getColorValue(pixels[j], method) < pivotValue) {
-            i++;
-            if (i !== j) {
-                [pixels[i], pixels[j]] = [pixels[j], pixels[i]];
-                swaps++;
-                yield { swapped: true, index1: i, index2: j };
-            }
-        }
-    }
-    
-    i++;
-    if (i !== end) {
-        [pixels[i], pixels[end]] = [pixels[end], pixels[i]];
-        swaps++;
-        yield { swapped: true, index1: i, index2: end };
-    }
-    
-    return i;
-}
-
-// Animation loop for sorting
-async function animateSort() {
-    const animate = async () => {
-        if (!sorting || !sortingGenerator) return;
+        const val1 = getSortValue(pixels[currentIndex]);
+        const val2 = getSortValue(pixels[currentIndex + 1]);
         
-        const result = sortingGenerator.next();
-        
-        if (result.done) {
-            stopSorting();
-            return;
+        if (val1 > val2) {
+            // Swap
+            const temp = pixels[currentIndex];
+            pixels[currentIndex] = pixels[currentIndex + 1];
+            pixels[currentIndex + 1] = temp;
+            swapsThisPass++;
         }
         
-        draw();
-        updateInfo();
-        
-        // Speed control
-        const delay = 101 - speed;
-        animationId = setTimeout(() => {
-            animateSort();
-        }, delay);
-    };
-    
-    await animate();
-}
-
-// Stop sorting
-function stopSorting() {
-    sorting = false;
-    sortingGenerator = null;
-    if (animationId) {
-        clearTimeout(animationId);
-        animationId = null;
+        currentIndex++;
     }
-    document.getElementById('sort-btn').textContent = 'Start Sorting';
-    document.getElementById('sort-btn').classList.remove('active');
-    document.getElementById('shuffle-btn').disabled = false;
-    document.getElementById('reset-btn').disabled = false;
-    document.getElementById('algorithm').disabled = false;
-    document.getElementById('sort-method').disabled = false;
+    
+    // Update progress display
+    const progress = Math.floor((1 - swapsThisPass / totalPixels) * 100);
+    status.textContent = `Sorting... Pass progress: ${Math.floor(currentIndex / totalPixels * 100)}%`;
 }
 
-// Update info display
-function updateInfo() {
-    document.getElementById('swaps').textContent = swaps;
-    document.getElementById('comparisons').textContent = comparisons;
-}
-
-// Event listeners
-document.getElementById('sort-btn').addEventListener('click', () => {
+// Animation loop
+function animate() {
+    sortStep();
+    draw();
+    
     if (sorting) {
-        stopSorting();
-        document.getElementById('status').textContent = 'Paused';
+        requestAnimationFrame(animate);
     } else {
-        sorting = true;
-        comparisons = 0;
-        swaps = 0;
-        
-        const method = document.getElementById('sort-method').value;
-        const algorithm = document.getElementById('algorithm').value;
-        
-        if (algorithm === 'bubble') {
-            sortingGenerator = bubbleSort(method);
-        } else {
-            sortingGenerator = quickSort(method);
-        }
-        
-        document.getElementById('sort-btn').textContent = 'Pause Sorting';
-        document.getElementById('sort-btn').classList.add('active');
-        document.getElementById('shuffle-btn').disabled = true;
-        document.getElementById('reset-btn').disabled = true;
-        document.getElementById('algorithm').disabled = true;
-        document.getElementById('sort-method').disabled = true;
-        document.getElementById('status').textContent = 'Sorting...';
-        
-        animateSort();
+        draw(); // Final draw
     }
-});
+}
 
-document.getElementById('shuffle-btn').addEventListener('click', () => {
-    stopSorting();
-    
-    // Fisher-Yates shuffle
-    for (let i = pixels.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pixels[i], pixels[j]] = [pixels[j], pixels[i]];
-    }
-    
-    comparisons = 0;
-    swaps = 0;
-    document.getElementById('status').textContent = 'Shuffled';
-    updateInfo();
-    draw();
-});
-
-document.getElementById('reset-btn').addEventListener('click', () => {
-    stopSorting();
-    initializePixels();
-    comparisons = 0;
-    swaps = 0;
-    document.getElementById('status').textContent = 'New colors generated';
-    updateInfo();
-    draw();
-});
-
-document.getElementById('speed-slider').addEventListener('input', (e) => {
-    speed = parseInt(e.target.value);
-});
-
-// Initialize and draw
-initializePixels();
+// Start
+initPixels();
 draw();
-updateInfo();
+requestAnimationFrame(animate);
 
-// Reload with new colors on page refresh
-window.addEventListener('load', () => {
-    initializePixels();
-    draw();
+// Click to restart
+canvas.addEventListener('click', () => {
+    sorting = true;
+    initPixels();
+    animate();
 });

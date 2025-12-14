@@ -1,35 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Agent Render</title>
+    <title>Pixel Color Sorter</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="controls">
-        <button id="sort-btn">Start Sorting</button>
-        <button id="shuffle-btn">Shuffle</button>
-        <button id="reset-btn">New Colors</button>
-        <select id="algorithm">
-            <option value="bubble">Bubble Sort</option>
-            <option value="quick">Quick Sort</option>
-        </select>
-        <select id="sort-method">
-            <option value="hue">Sort by Hue</option>
-            <option value="brightness">Sort by Brightness</option>
-            <option value="saturation">Sort by Saturation</option>
-            <option value="red">Sort by Red Channel</option>
-            <option value="green">Sort by Green Channel</option>
-            <option value="blue">Sort by Blue Channel</option>
-        </select>
-        <label>
-            Speed: <input type="range" id="speed-slider" min="1" max="100" value="50">
-        </label>
-    </div>
     <canvas id="canvas"></canvas>
     <div id="info">
-        <span id="status">Ready</span> | 
-        Swaps: <span id="swaps">0</span> | 
-        Comparisons: <span id="comparisons">0</span>
+        <span id="status">Sorting...</span>
     </div>
     <script src="script.js"></script>
 </body>
