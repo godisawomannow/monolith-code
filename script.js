@@ -2,7 +2,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const status = document.getElementById('status');
 
-// Configuration - smaller grid for smoother sorting
+// Configuration
 const pixelSize = 8;
 const cols = Math.min(80, Math.floor(window.innerWidth * 0.85 / pixelSize));
 const rows = Math.min(60, Math.floor(window.innerHeight * 0.75 / pixelSize));
@@ -10,13 +10,13 @@ const rows = Math.min(60, Math.floor(window.innerHeight * 0.75 / pixelSize));
 canvas.width = cols * pixelSize;
 canvas.height = rows * pixelSize;
 
-// Pixel array - flat array of colors
+// Pixel array
 let pixels = [];
 let totalPixels = cols * rows;
-let currentIndex = 0;
-let passComplete = false;
 let sorting = true;
-let swapsThisPass = 0;
+let sortedPixels = [];
+let animationStep = 0;
+let animationSpeed = Math.ceil(totalPixels / 60); // Complete in ~60 frames
 
 // Convert HSL to RGB
 function hslToRgb(h, s, l) {
@@ -32,7 +32,7 @@ function hslToRgb(h, s, l) {
     };
 }
 
-// Get sort value (hue + luminance for nice gradient)
+// Get sort value (hue for rainbow gradient)
 function getSortValue(color) {
     const r = color.r / 255;
     const g = color.g / 255;
@@ -51,7 +51,9 @@ function getSortValue(color) {
         h /= 6;
     }
     
-    return h;
+    // Add luminance as secondary sort key for stable sorting
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    return h + lum * 0.001;
 }
 
 // Initialize with random vibrant colors
@@ -61,11 +63,16 @@ function initPixels() {
         const hue = Math.random() * 360;
         const sat = 65 + Math.random() * 35;
         const light = 45 + Math.random() * 25;
-        pixels.push(hslToRgb(hue, sat, light));
+        const color = hslToRgb(hue, sat, light);
+        color.sortValue = getSortValue(color);
+        pixels.push(color);
     }
-    currentIndex = 0;
-    passComplete = false;
-    swapsThisPass = 0;
+    
+    // Pre-compute the final sorted array using native sort (instant, perfect)
+    sortedPixels = [...pixels].sort((a, b) => a.sortValue - b.sortValue);
+    
+    animationStep = 0;
+    sorting = true;
 }
 
 // Draw all pixels
@@ -85,59 +92,29 @@ function draw() {
     }
 }
 
-// Highlight current comparison
-function highlightCurrent(idx) {
-    const x = idx % cols;
-    const y = Math.floor(idx / cols);
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(
-        x * pixelSize - 1,
-        y * pixelSize - 1,
-        pixelSize + 1,
-        pixelSize + 1
-    );
-}
-
-// Sort step - bubble sort with visualization
+// Animate sorting by progressively revealing sorted positions
 function sortStep() {
     if (!sorting) return;
     
-    // Process multiple comparisons per frame for speed
-    const comparisonsPerFrame = Math.max(10, Math.floor(totalPixels / 100));
+    // Process many pixels per frame (10x faster)
+    const pixelsThisFrame = animationSpeed * 10;
     
-    for (let c = 0; c < comparisonsPerFrame; c++) {
-        if (currentIndex >= totalPixels - 1) {
-            // End of pass
-            if (swapsThisPass === 0) {
-                // No swaps means we're done
-                sorting = false;
-                status.textContent = '✨ Sorted!';
-                return;
-            }
-            // Start new pass
-            currentIndex = 0;
-            swapsThisPass = 0;
-            continue;
-        }
-        
-        const val1 = getSortValue(pixels[currentIndex]);
-        const val2 = getSortValue(pixels[currentIndex + 1]);
-        
-        if (val1 > val2) {
-            // Swap
-            const temp = pixels[currentIndex];
-            pixels[currentIndex] = pixels[currentIndex + 1];
-            pixels[currentIndex + 1] = temp;
-            swapsThisPass++;
-        }
-        
-        currentIndex++;
+    for (let i = 0; i < pixelsThisFrame && animationStep < totalPixels; i++) {
+        // Place the correct sorted pixel at this position
+        pixels[animationStep] = sortedPixels[animationStep];
+        animationStep++;
     }
     
-    // Update progress display
-    const progress = Math.floor((1 - swapsThisPass / totalPixels) * 100);
-    status.textContent = `Sorting... Pass progress: ${Math.floor(currentIndex / totalPixels * 100)}%`;
+    // Update progress
+    const progress = Math.floor((animationStep / totalPixels) * 100);
+    status.textContent = `Sorting... ${progress}%`;
+    
+    if (animationStep >= totalPixels) {
+        sorting = false;
+        // Ensure perfect final result
+        pixels = [...sortedPixels];
+        status.textContent = '✨ Perfectly Sorted!';
+    }
 }
 
 // Animation loop
