@@ -5,16 +5,18 @@
 }
 
 :root {
-    --primary: #00ff88;
-    --primary-dim: #00cc6a;
-    --secondary: #7c3aed;
-    --accent: #ff6b35;
+    --primary: #3b82f6;
+    --primary-dim: #2563eb;
+    --secondary: #8b5cf6;
+    --accent: #06b6d4;
+    --success: #10b981;
+    --warning: #f59e0b;
     --bg-dark: #0a0a0f;
     --bg-card: #12121a;
     --bg-terminal: #0d0d12;
     --text: #ffffff;
-    --text-dim: #8b8b9a;
-    --border: #2a2a3a;
+    --text-dim: #9ca3af;
+    --border: #27272a;
 }
 
 body {
@@ -36,7 +38,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 15px 40px;
-    background: rgba(10, 10, 15, 0.9);
+    background: rgba(10, 10, 15, 0.95);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
 }
@@ -44,24 +46,24 @@ body {
 .nav-logo {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-size: 20px;
     font-weight: 700;
 }
 
 .logo-icon {
     color: var(--primary);
-    font-size: 24px;
-    animation: logoPulse 2s infinite;
+    font-size: 22px;
+    animation: logoPulse 3s infinite;
 }
 
 @keyframes logoPulse {
     0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.8; transform: scale(1.1); }
+    50% { opacity: 0.9; transform: scale(1.05); }
 }
 
 .logo-text { color: var(--text); }
-.logo-fun { color: var(--primary); }
+.logo-highlight { color: var(--primary); }
 
 .nav-links {
     display: flex;
@@ -79,10 +81,10 @@ body {
 .nav-links a:hover { color: var(--primary); }
 
 .nav-cta {
-    background: transparent;
-    border: 1px solid var(--primary);
-    color: var(--primary);
-    padding: 10px 20px;
+    background: var(--primary);
+    border: none;
+    color: white;
+    padding: 10px 24px;
     border-radius: 8px;
     font-family: inherit;
     font-weight: 600;
@@ -91,8 +93,8 @@ body {
 }
 
 .nav-cta:hover {
-    background: var(--primary);
-    color: var(--bg-dark);
+    background: var(--primary-dim);
+    transform: translateY(-1px);
 }
 
 /* Hero Section */
@@ -117,7 +119,7 @@ body {
 #canvas {
     width: 100%;
     height: 100%;
-    opacity: 0.4;
+    opacity: 0.3;
 }
 
 .hero-content {
@@ -129,20 +131,14 @@ body {
 
 .hero-badge {
     display: inline-block;
-    background: rgba(0, 255, 136, 0.1);
-    border: 1px solid rgba(0, 255, 136, 0.3);
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
     color: var(--primary);
     padding: 8px 16px;
     border-radius: 50px;
     font-size: 14px;
     font-weight: 500;
     margin-bottom: 24px;
-    animation: badgeGlow 2s infinite;
-}
-
-@keyframes badgeGlow {
-    0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.2); }
-    50% { box-shadow: 0 0 30px rgba(0, 255, 136, 0.4); }
 }
 
 .hero-title {
@@ -166,7 +162,7 @@ body {
     color: var(--text-dim);
     max-width: 600px;
     margin: 0 auto 32px;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 
 .hero-cta {
@@ -179,7 +175,7 @@ body {
 .btn-primary {
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dim) 100%);
     border: none;
-    color: var(--bg-dark);
+    color: white;
     padding: 16px 32px;
     border-radius: 12px;
     font-family: inherit;
@@ -190,12 +186,12 @@ body {
     align-items: center;
     gap: 8px;
     transition: all 0.3s;
-    box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 50px rgba(0, 255, 136, 0.5);
+    box-shadow: 0 6px 30px rgba(59, 130, 246, 0.4);
 }
 
 .btn-secondary {
@@ -317,12 +313,11 @@ body {
 }
 
 .comment { color: #6b7280; }
-.success { color: var(--primary); }
-.info { color: #60a5fa; }
-.warning { color: #fbbf24; }
+.success { color: var(--success); }
+.info { color: var(--primary); }
+.warning { color: var(--warning); }
 .highlight { color: var(--secondary); }
-.profit { color: var(--primary); font-weight: bold; }
-.loss { color: #ef4444; }
+.metric { color: var(--accent); }
 
 #cli {
     display: flex;
@@ -381,7 +376,7 @@ body {
 .feature-card:hover {
     border-color: var(--primary);
     transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(0, 255, 136, 0.1);
+    box-shadow: 0 20px 40px rgba(59, 130, 246, 0.1);
 }
 
 .feature-icon {
@@ -395,6 +390,52 @@ body {
 }
 
 .feature-card p {
+    color: var(--text-dim);
+    line-height: 1.6;
+}
+
+/* Methodology */
+#methodology {
+    padding: 80px 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.methodology-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 24px;
+}
+
+.method-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    position: relative;
+    transition: all 0.3s;
+}
+
+.method-card:hover {
+    border-color: var(--secondary);
+    transform: translateY(-4px);
+}
+
+.method-number {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--secondary);
+    opacity: 0.3;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 16px;
+}
+
+.method-card h3 {
+    font-size: 20px;
+    margin-bottom: 12px;
+}
+
+.method-card p {
     color: var(--text-dim);
     line-height: 1.6;
 }
@@ -416,7 +457,7 @@ body {
 .ticker-content {
     display: flex;
     gap: 60px;
-    animation: tickerScroll 30s linear infinite;
+    animation: tickerScroll 40s linear infinite;
     white-space: nowrap;
 }
 
@@ -433,22 +474,27 @@ body {
     font-size: 14px;
 }
 
-.ticker-item .collection {
+.ticker-item .token {
     color: var(--text);
     font-weight: 600;
 }
 
-.ticker-item .action {
+.ticker-item .metric-label {
     color: var(--text-dim);
 }
 
-.ticker-item .profit {
-    color: var(--primary);
+.ticker-item .positive {
+    color: var(--success);
     font-weight: bold;
 }
 
-.ticker-item .loss {
+.ticker-item .negative {
     color: #ef4444;
+    font-weight: bold;
+}
+
+.ticker-item .neutral {
+    color: var(--accent);
     font-weight: bold;
 }
 
@@ -460,7 +506,7 @@ body {
 }
 
 .cta-card {
-    background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
     border: 1px solid var(--border);
     border-radius: 24px;
     padding: 60px;
@@ -527,6 +573,8 @@ body {
     color: var(--text-dim);
     font-size: 12px;
     opacity: 0.6;
+    max-width: 500px;
+    margin: 0 auto;
 }
 
 /* Glitch Overlay */
@@ -555,6 +603,7 @@ body {
     
     .hero-stats {
         gap: 30px;
+        flex-wrap: wrap;
     }
     
     .stat-value {
@@ -566,7 +615,7 @@ body {
         align-items: center;
     }
     
-    #features, #cta-section {
+    #features, #cta-section, #methodology {
         padding: 60px 20px;
     }
     
